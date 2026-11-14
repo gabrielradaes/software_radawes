@@ -2,7 +2,7 @@
 #
 # Cada push a "main":
 #   1. Instala dependencias de producción y compila estilos/scripts en GitHub.
-#   2. Sube por FTPS SOLO los archivos que cambiaron:
+#   2. Sube por FTPS con lftp (6 archivos en paralelo, con reintentos):
 #        build/rye/          → /home/<usuario>/rye/          (nunca toca .env ni storage/)
 #        build/public_html/  → /home/<usuario>/public_html/  (nunca toca uploads/)
 #   3. Llama a https://<dominio>/_deploy para aplicar migraciones y limpiar cachés.
@@ -87,24 +87,33 @@ jobs:
           cp deploy/htaccess build/public_html/.htaccess
           echo "rye: $(find build/rye -type f | wc -l) archivos · public_html: $(find build/public_html -type f | wc -l) archivos"
 
-      - name: Subir sistema (rye/)
+      - name: Instalar lftp
         if: env.FTP_SERVER != ''
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          security: loose
-          local-dir: ./build/rye/
-          server-dir: ./rye/
-          # vendor/ NO va por FTP (son ~6.400 archivos): viaja en un solo zip en el paso siguiente
-          exclude: |
-            **/.git*
-            **/.git*/**
-            .env
-            storage/**
-            vendor/**
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp > /dev/null
+          # Ajustes comunes: FTPS explícito, reintentos y tiempo de espera
+          cat > "$HOME/.lftprc" <<'EOF'
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate no
+          set ftp:passive-mode true
+          set net:max-retries 5
+          set net:reconnect-interval-base 5
+          set net:timeout 30
+          set mirror:parallel-transfer-count 6
+          set cmd:fail-exit true
+          EOF
+          sed -i 's/^ *//' "$HOME/.lftprc"
+
+      - name: Subir sistema (rye/, sin vendor ni .env ni storage)
+        if: env.FTP_SERVER != ''
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "
+            mirror -R --no-perms --verbose=1               --exclude-glob .env --exclude-glob .git*               --exclude-glob storage/ --exclude-glob vendor/               build/rye/ rye/;
+            bye"
 
       - name: Librerías (vendor) en un solo zip, solo si cambiaron
         if: env.FTP_SERVER != ''
@@ -127,32 +136,23 @@ jobs:
           echo "Librerías nuevas ($HASH): subiendo vendor.zip"
           (cd build/rye && zip -qr ../vendor.zip vendor)
           ls -lh build/vendor.zip
-          curl -sS --ssl-reqd -k --ftp-create-dirs --retry 3 --max-time 600 \
-               --user "$FTP_USERNAME:$FTP_PASSWORD" \
-               -T build/vendor.zip "ftp://$FTP_SERVER/rye/storage/app/deploy/vendor.zip"
-          RESP=$(curl -sS --fail-with-body --max-time 300 -X POST \
-               -H "X-Deploy-Token: $DEPLOY_TOKEN" -H "X-Vendor-Hash: $HASH" "$URL/_deploy/vendor")
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "
+            mkdir -p -f rye/storage/app/deploy;
+            put -O rye/storage/app/deploy build/vendor.zip;
+            bye"
+          RESP=$(curl -sS --fail-with-body --max-time 300 -X POST                -H "X-Deploy-Token: $DEPLOY_TOKEN" -H "X-Vendor-Hash: $HASH" "$URL/_deploy/vendor")
           echo "$RESP"
           echo "$RESP" | grep -q '"ok":true'
 
-      - name: Subir parte pública (public_html/)
+      - name: Subir parte pública (public_html/, nunca uploads)
         if: env.FTP_SERVER != ''
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          security: loose
-          local-dir: ./build/public_html/
-          server-dir: ./public_html/
-          exclude: |
-            uploads/**
-            .well-known/**
-            cgi-bin/**
-            error_log
-            php.ini
-            .user.ini
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "
+            mirror -R --no-perms --verbose=1 --exclude-glob uploads/ build/public_html/ public_html/;
+            bye"
 
       - name: Aplicar migraciones y limpiar cachés
         if: env.FTP_SERVER != ''
