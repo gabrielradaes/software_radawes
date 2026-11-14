@@ -17,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [EnsureVisitorToken::class, \App\Http\Middleware\ResolveBranchDomain::class]);
         $middleware->encryptCookies(except: [EnsureVisitorToken::COOKIE, 'rye_name']);
         // La puerta de actualización se protege con su propia clave (no con sesión/CSRF)
-        $middleware->validateCsrfTokens(except: ['_deploy']);
+        $middleware->validateCsrfTokens(except: ['_deploy', '_deploy/*']);
 
         // Tienda de la URL actual (o la principal) para armar rutas públicas
         $storeSlug = function (Request $r): string {

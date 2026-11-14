@@ -29,7 +29,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     env:
       FTP_SERVER: ${{ secrets.FTP_SERVER }}
 
@@ -98,11 +98,42 @@ jobs:
           security: loose
           local-dir: ./build/rye/
           server-dir: ./rye/
+          # vendor/ NO va por FTP (son ~6.400 archivos): viaja en un solo zip en el paso siguiente
           exclude: |
             **/.git*
             **/.git*/**
             .env
             storage/**
+            vendor/**
+
+      - name: Librerías (vendor) en un solo zip, solo si cambiaron
+        if: env.FTP_SERVER != ''
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          set -e
+          URL="${SITE_URL:-https://radawescalzadosbrasileros.com}"
+          HASH=$(sha1sum composer.lock | cut -c1-40)
+          STATUS=$(curl -sS --fail-with-body -X POST -H "X-Deploy-Token: $DEPLOY_TOKEN" "$URL/_deploy/estado")
+          echo "Servidor: $STATUS"
+          CURRENT=$(echo "$STATUS" | php -r '$j = json_decode(stream_get_contents(STDIN)); echo $j->vendor_hash ?? "";')
+          if [ "$HASH" = "$CURRENT" ]; then
+            echo "Las librerías no cambiaron: no se suben."
+            exit 0
+          fi
+          echo "Librerías nuevas ($HASH): subiendo vendor.zip"
+          (cd build/rye && zip -qr ../vendor.zip vendor)
+          ls -lh build/vendor.zip
+          curl -sS --ssl-reqd -k --ftp-create-dirs --retry 3 --max-time 600 \
+               --user "$FTP_USERNAME:$FTP_PASSWORD" \
+               -T build/vendor.zip "ftp://$FTP_SERVER/rye/storage/app/deploy/vendor.zip"
+          RESP=$(curl -sS --fail-with-body --max-time 300 -X POST \
+               -H "X-Deploy-Token: $DEPLOY_TOKEN" -H "X-Vendor-Hash: $HASH" "$URL/_deploy/vendor")
+          echo "$RESP"
+          echo "$RESP" | grep -q '"ok":true'
 
       - name: Subir parte pública (public_html/)
         if: env.FTP_SERVER != ''

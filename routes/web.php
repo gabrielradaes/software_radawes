@@ -101,6 +101,8 @@ Route::get('/sitemap.xml', \App\Http\Controllers\SitemapController::class)->name
 
 // Llamado por GitHub Actions tras subir una versión nueva (ver .github/workflows/deploy.yml)
 Route::post('/_deploy', \App\Http\Controllers\DeployController::class)->name('deploy');
+Route::post('/_deploy/estado', [\App\Http\Controllers\DeployController::class, 'status'])->name('deploy.status');
+Route::post('/_deploy/vendor', [\App\Http\Controllers\DeployController::class, 'vendor'])->name('deploy.vendor');
 Route::get('/sucursales', fn () => redirect()->route('landing'));
 
 Route::prefix('{branch}')->middleware(SetBranchFromRoute::class)->group(function () {
