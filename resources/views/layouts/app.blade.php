@@ -14,6 +14,7 @@
     <meta name="description" content="@yield('meta_description', $currentBranch->tagline)">
     <meta name="theme-color" content="{{ $currentBranch->color_primary }}">
     @include('partials.head-assets', ['palette' => $palette, 'collapse' => true])
+    @include('partials.seo', ['seoTitle' => trim($__env->yieldContent('title', $currentBranch->brandName().' · '.$currentBranch->city)), 'seoDescription' => trim($__env->yieldContent('meta_description', $currentBranch->tagline)), 'seoImage' => trim($__env->yieldContent('og_image')) ?: null, 'branch' => request()->routeIs('home') ? $currentBranch : null])
     @stack('head')
 </head>
 <body class="bg-brand-50 text-brand-900 font-sans antialiased">

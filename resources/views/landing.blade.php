@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RyE · Nuestras tiendas</title>
-    <meta name="description" content="RadaWes, RyE Made in Brazil y RyC: calzado de cuero brasileño, motos y accesorios en La Paz y El Alto.">
+    <title>RadaWes · Calzado de cuero brasileño en La Paz y El Alto | Página oficial</title>
+    <meta name="description" content="Página oficial de RadaWes: calzado de cuero hecho en Brasil para hombre (zapatos de traje, botines, mocasines, montañeras y zapatenis), motos y accesorios. Tiendas en Calle Comercio, Calacoto y El Alto. Pedidos por WhatsApp.">
+    @include('partials.seo', ['seoTitle' => 'RadaWes · Calzado de cuero brasileño | Página oficial', 'seoDescription' => 'Calzado de cuero hecho en Brasil, motos y accesorios. Tiendas en La Paz y El Alto.'])
     @include('partials.head-assets', ['palette' => \App\Support\Theme::defaultPalette(), 'alpine' => false])
 </head>
 <body class="min-h-screen bg-[#141010] text-white font-sans antialiased" style="background-image: radial-gradient(circle at 15% 20%, #4a2c1c 0, transparent 40%), radial-gradient(circle at 85% 80%, #0f5132 0, transparent 40%);">

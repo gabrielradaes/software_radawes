@@ -1,2 +1,11 @@
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /_deploy
+Disallow: /*/mi-cuenta
+Disallow: /*/ingresar
+Disallow: /*/registro
+Disallow: /*/verificar
+Disallow: /*/recuperar
+Disallow: /*/whatsapp
+
+Sitemap: https://radawescalzadosbrasileros.com/sitemap.xml

@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+
+    // Código de verificación de Google Search Console (meta google-site-verification)
+    'google' => [
+        'site_verification' => env('GOOGLE_SITE_VERIFICATION'),
+    ],
+
 ];

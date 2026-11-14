@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', $product->name.' · '.$currentBranch->name)
 @section('meta_description', $product->short_description)
+@section('og_image', $product->primaryImage?->url() ?? '')
 
 @section('content')
 @php

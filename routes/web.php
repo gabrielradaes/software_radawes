@@ -96,6 +96,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
 */
 Route::get('/', LandingController::class)->name('landing');
 
+// Para Google: mapa del sitio
+Route::get('/sitemap.xml', \App\Http\Controllers\SitemapController::class)->name('sitemap');
+
 // Llamado por GitHub Actions tras subir una versión nueva (ver .github/workflows/deploy.yml)
 Route::post('/_deploy', \App\Http\Controllers\DeployController::class)->name('deploy');
 Route::get('/sucursales', fn () => redirect()->route('landing'));
