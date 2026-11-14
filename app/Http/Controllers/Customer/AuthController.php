@@ -190,7 +190,7 @@ class AuthController extends Controller
         }
         RateLimiter::hit($key, 60);
 
-        $customer = Customer::where('email', $request->email)->whereNotNull('password')->where('is_active', true)->first();
+        $customer = Customer::where('email', $request->email)->where('is_active', true)->first();   // también clientes creados en tienda (sin contraseña aún)
         if ($customer) {
             try {
                 VerificationCode::issue($customer, VerificationCode::RESET);
@@ -230,7 +230,7 @@ class AuthController extends Controller
             'password' => ['required', 'confirmed', Password::min(6)],
         ], [], ['code' => 'código', 'password' => 'nueva contraseña']);
 
-        $customer = Customer::where('email', $email)->whereNotNull('password')->first();
+        $customer = Customer::where('email', $email)->where('is_active', true)->first();
         $error = $customer ? VerificationCode::check($customer, VerificationCode::RESET, $request->code) : 'Código incorrecto.';
         if ($error) {
             return back()->withErrors(['code' => $error]);

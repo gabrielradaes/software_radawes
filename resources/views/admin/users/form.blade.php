@@ -6,7 +6,7 @@
     @csrf @if($user->exists) @method('PUT') @endif
     <x-admin.field label="Nombre" name="name"><input name="name" value="{{ old('name', $user->name) }}" required class="w-full rounded-lg border border-slate-300 px-3 py-2"></x-admin.field>
     <div class="grid sm:grid-cols-2 gap-4">
-        <x-admin.field label="Correo (para ingresar)" name="email"><input type="email" name="email" value="{{ old('email', $user->email) }}" required class="w-full rounded-lg border border-slate-300 px-3 py-2"></x-admin.field>
+        <x-admin.field label="Gmail (para ingresar y recuperar la contraseña)" name="email"><input type="email" name="email" placeholder="nombre@gmail.com" pattern="[^@\s]+@[gG][mM][aA][iI][lL]\.[cC][oO][mM]" title="Debe terminar en @gmail.com" value="{{ old('email', $user->email) }}" required class="w-full rounded-lg border border-slate-300 px-3 py-2"></x-admin.field>
         <x-admin.field label="Celular" name="phone"><input name="phone" value="{{ old('phone', $user->phone) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2"></x-admin.field>
     </div>
     <div class="grid sm:grid-cols-2 gap-4">
@@ -15,7 +15,7 @@
                 @foreach($roles as $r)<option value="{{ $r->id }}" @selected(old('role_id', $user->role_id) == $r->id)>{{ $r->label }}</option>@endforeach
             </select>
         </x-admin.field>
-        <x-admin.field label="Sucursal" name="branch_id" help="Supervisores y empleados solo ven su sucursal">
+        <x-admin.field label="Sucursal" name="branch_id" help="Supervisores y vendedores solo ven su sucursal (obligatoria para ellos)">
             <select name="branch_id" class="w-full rounded-lg border border-slate-300 px-3 py-2">
                 <option value="">Todas (solo admin)</option>
                 @foreach($branches as $b)<option value="{{ $b->id }}" @selected(old('branch_id', $user->branch_id) == $b->id)>{{ $b->name }}</option>@endforeach

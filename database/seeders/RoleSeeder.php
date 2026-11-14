@@ -53,8 +53,8 @@ class RoleSeeder extends Seeder
                 ],
             ],
             Role::EMPLEADO => [
-                'label' => 'Empleado',
-                'description' => 'Vendedor: consulta stock y registra ventas de su sucursal.',
+                'label' => 'Vendedor',
+                'description' => 'Vendedor de tienda: consulta stock, registra clientes y ventas de su sucursal.',
                 'permissions' => ['products.view', 'stock.view', 'sales.create', 'sales.view', 'leads.manage', 'customers.view'],
             ],
         ];

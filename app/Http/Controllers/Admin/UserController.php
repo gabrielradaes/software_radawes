@@ -73,15 +73,24 @@ class UserController extends Controller
 
     protected function validated(Request $request, ?User $user = null): array
     {
+        \App\Support\Gmail::normalize($request);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user)],
+            // Gmail obligatorio: ahí llegan los códigos para recuperar la contraseña
+            'email' => \App\Support\Gmail::rules([Rule::unique('users')->ignore($user)]),
             'phone' => ['nullable', 'string', 'max:30'],
             'role_id' => ['required', 'exists:roles,id'],
             'branch_id' => ['nullable', 'exists:branches,id'],
             'password' => [$user ? 'nullable' : 'required', 'confirmed', Password::min(8)],
             'is_active' => ['boolean'],
-        ], [], ['name' => 'nombre', 'email' => 'correo', 'role_id' => 'rol', 'password' => 'contraseña']);
+        ], ['email.regex' => \App\Support\Gmail::MESSAGE], ['name' => 'nombre', 'email' => 'Gmail', 'role_id' => 'rol', 'password' => 'contraseña']);
+
+        // Supervisores y vendedores deben tener sucursal; el admin puede ser global
+        $role = Role::find($data['role_id']);
+        if ($role && $role->name !== Role::ADMIN && empty($data['branch_id'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['branch_id' => 'Elige la sucursal de este '.strtolower($role->label).'.']);
+        }
         $data['is_active'] = $request->boolean('is_active');
 
         return $data;

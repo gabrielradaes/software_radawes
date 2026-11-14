@@ -22,6 +22,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware('guest')->group(function () {
         Route::get('login', [Admin\AuthController::class, 'show'])->name('login');
         Route::post('login', [Admin\AuthController::class, 'login'])->middleware('throttle:10,1');
+        Route::get('recuperar', [Admin\AuthController::class, 'showForgot'])->name('password.forgot');
+        Route::post('recuperar', [Admin\AuthController::class, 'sendReset'])->middleware('throttle:10,1');
+        Route::get('recuperar/codigo', [Admin\AuthController::class, 'showReset'])->name('password.reset');
+        Route::post('recuperar/codigo', [Admin\AuthController::class, 'reset'])->middleware('throttle:20,1');
     });
 
     Route::middleware('auth')->group(function () {
@@ -60,6 +64,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Clientes
         Route::middleware('can:customers.view')->group(function () {
             Route::get('clientes', [Admin\CustomerController::class, 'index'])->name('clientes.index');
+            Route::get('clientes/nuevo', [Admin\CustomerController::class, 'create'])->name('clientes.create');
+            Route::post('clientes', [Admin\CustomerController::class, 'store'])->name('clientes.store');
             Route::get('clientes/{customer}', [Admin\CustomerController::class, 'show'])->name('clientes.show');
         });
         Route::patch('clientes/{customer}', [Admin\CustomerController::class, 'update'])->middleware('can:customers.manage')->name('clientes.update');

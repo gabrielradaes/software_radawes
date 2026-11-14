@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\Branch;
 use App\Models\Customer;
+use App\Models\User;
 use App\Models\VerificationCode;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -17,7 +18,7 @@ class VerificationCodeMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public Customer $customer,
+        public Customer|User $customer,
         public string $code,
         public string $purpose,
         public Branch $branch,

@@ -30,6 +30,44 @@ class CustomerController extends Controller
         return view('admin.customers.index', compact('customers', 'q', 'totals'));
     }
 
+    public function create()
+    {
+        return view('admin.customers.form', ['customer' => new Customer(['city' => 'La Paz'])]);
+    }
+
+    /**
+     * Registrar un cliente desde la tienda (sin contraseña). Si tiene Gmail, después activa
+     * su cuenta web con "¿Olvidaste tu contraseña?" en el sitio.
+     */
+    public function store(Request $request)
+    {
+        \App\Support\Gmail::normalize($request);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
+            'phone' => ['required', 'string', 'max:30', 'regex:/^[0-9+\s-]{7,20}$/'],
+            'email' => ['nullable', 'string', 'max:150', 'email:rfc', 'regex:/^[a-z0-9](?:[a-z0-9.+_-]*[a-z0-9])?@gmail\.com$/', 'unique:customers,email'],
+            'city' => ['nullable', 'string', 'max:80'],
+            'document' => ['nullable', 'string', 'max:40'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'email.regex' => \App\Support\Gmail::MESSAGE,
+            'email.unique' => 'Ya hay un cliente con ese Gmail.',
+            'phone.regex' => 'Escribe un celular válido (solo números).',
+        ], ['name' => 'nombre', 'phone' => 'celular', 'email' => 'Gmail', 'document' => 'CI/NIT', 'notes' => 'notas']);
+
+        $data['phone'] = preg_replace('/\D+/', '', $data['phone']);
+
+        if ($existing = Customer::where('phone', $data['phone'])->first()) {
+            return redirect()->route('admin.clientes.show', $existing)
+                ->with('status', 'Ese celular ya estaba registrado: esta es su ficha.');
+        }
+
+        $customer = Customer::create($data + ['is_active' => true]);
+
+        return redirect()->route('admin.clientes.show', $customer)->with('status', 'Cliente registrado.');
+    }
+
     public function show(Customer $customer)
     {
         $customer->load([

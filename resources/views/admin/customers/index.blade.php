@@ -1,5 +1,6 @@
 @extends('admin.layouts.app')
 @section('title', 'Clientes')
+@section('actions')<a href="{{ route('admin.clientes.create') }}" class="bg-brand-900 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">+ Nuevo cliente</a>@endsection
 
 @section('content')
 <div class="grid grid-cols-3 gap-4 mb-5 max-w-xl">

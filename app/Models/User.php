@@ -77,6 +77,11 @@ class User extends Authenticatable
         return $this->isAdmin() ? null : $this->branch_id;
     }
 
+    public function firstName(): string
+    {
+        return explode(' ', trim($this->name))[0] ?? $this->name;
+    }
+
     public function initials(): string
     {
         return mb_strtoupper(mb_substr($this->name, 0, 1));
