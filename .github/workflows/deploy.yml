@@ -1,0 +1,145 @@
+# Despliegue automático al hosting cPanel (sin SSH).
+#
+# Cada push a "main":
+#   1. Instala dependencias de producción y compila estilos/scripts en GitHub.
+#   2. Sube por FTPS SOLO los archivos que cambiaron:
+#        build/rye/          → /home/<usuario>/rye/          (nunca toca .env ni storage/)
+#        build/public_html/  → /home/<usuario>/public_html/  (nunca toca uploads/)
+#   3. Llama a https://<dominio>/_deploy para aplicar migraciones y limpiar cachés.
+#
+# Secretos necesarios (GitHub → Settings → Secrets and variables → Actions):
+#   FTP_SERVER     servidor FTP (ej. paul.cloudserver17.com)
+#   FTP_USERNAME   cuenta FTP cuya carpeta es la de inicio (/home/<usuario>)
+#   FTP_PASSWORD   contraseña de esa cuenta FTP
+#   DEPLOY_TOKEN   la misma clave que DEPLOY_TOKEN en rye/.env del hosting
+# Variable (no secreta):
+#   SITE_URL       ej. https://radawescalzadosbrasileros.com
+
+name: Desplegar al hosting
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+
+    steps:
+      - name: ¿Están configurados los secretos?
+        if: env.FTP_SERVER == ''
+        run: |
+          echo "::warning::Faltan los secretos FTP_SERVER / FTP_USERNAME / FTP_PASSWORD / DEPLOY_TOKEN. No se despliega."
+          echo "Configúralos en Settings → Secrets and variables → Actions y vuelve a ejecutar."
+
+      - uses: actions/checkout@v4
+        if: env.FTP_SERVER != ''
+
+      - name: PHP 8.3
+        if: env.FTP_SERVER != ''
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, fileinfo, gd, zip, intl, bcmath
+          tools: composer:v2
+          coverage: none
+
+      - name: Dependencias PHP (producción)
+        if: env.FTP_SERVER != ''
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+      - name: Node 22
+        if: env.FTP_SERVER != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Compilar estilos y scripts
+        if: env.FTP_SERVER != ''
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Armar carpetas rye/ y public_html/
+        if: env.FTP_SERVER != ''
+        run: |
+          set -e
+          mkdir -p build/rye build/public_html
+          tar --exclude=./.git --exclude=./.github --exclude=./node_modules --exclude=./build \
+              --exclude=./tests --exclude=./public --exclude=./storage --exclude=./.env \
+              --exclude=./deploy --exclude=./scripts \
+              -cf - . | (cd build/rye && tar -xf -)
+          # public_html: assets + index.php y .htaccess de producción (nunca uploads/)
+          cp -r public/css public/js public/favicon.ico public/robots.txt build/public_html/
+          mkdir -p build/public_html/images
+          cp -r public/images/brands build/public_html/images/
+          cp deploy/index.php build/public_html/index.php
+          cp deploy/htaccess build/public_html/.htaccess
+          echo "rye: $(find build/rye -type f | wc -l) archivos · public_html: $(find build/public_html -type f | wc -l) archivos"
+
+      - name: Subir sistema (rye/)
+        if: env.FTP_SERVER != ''
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          security: loose
+          local-dir: ./build/rye/
+          server-dir: ./rye/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .env
+            storage/**
+
+      - name: Subir parte pública (public_html/)
+        if: env.FTP_SERVER != ''
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          security: loose
+          local-dir: ./build/public_html/
+          server-dir: ./public_html/
+          exclude: |
+            uploads/**
+            .well-known/**
+            cgi-bin/**
+            error_log
+            php.ini
+            .user.ini
+
+      - name: Aplicar migraciones y limpiar cachés
+        if: env.FTP_SERVER != ''
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          set -e
+          URL="${SITE_URL:-https://radawescalzadosbrasileros.com}/_deploy"
+          RESP=$(curl -sS --fail-with-body -X POST -H "X-Deploy-Token: $DEPLOY_TOKEN" "$URL")
+          echo "$RESP"
+          echo "$RESP" | grep -q '"ok":true'
+
+      - name: Comprobar que la página responde
+        if: env.FTP_SERVER != ''
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          URL="${SITE_URL:-https://radawescalzadosbrasileros.com}"
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' "$URL/")
+          echo "Portada: $CODE"
+          test "$CODE" = "200"

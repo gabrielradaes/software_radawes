@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Valores por defecto (paleta "Cuero clásico"); cada página los sobrescribe con los de su tienda */
+:root {
+    --brand-50: 250 246 241;
+    --brand-100: 243 233 223;
+    --brand-200: 230 211 193;
+    --brand-300: 201 162 126;
+    --brand-500: 138 90 60;
+    --brand-700: 90 58 42;
+    --brand-800: 63 42 31;
+    --brand-900: 43 29 23;
+    --brand-950: 26 18 16;
+    --gold-400: 216 181 97;
+    --gold-500: 200 162 74;
+    --gold-600: 169 133 52;
+}
+
+[x-cloak] { display: none !important; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.prose-body { white-space: pre-line; }
