@@ -80,6 +80,7 @@ jobs:
               -cf - . | (cd build/rye && tar -xf -)
           # public_html: assets + index.php y .htaccess de producción (nunca uploads/)
           cp -r public/css public/js public/favicon.ico public/robots.txt build/public_html/
+          cp public/google*.html build/public_html/ 2>/dev/null || true   # verificación de Google Search Console
           mkdir -p build/public_html/images
           cp -r public/images/brands build/public_html/images/
           cp deploy/index.php build/public_html/index.php

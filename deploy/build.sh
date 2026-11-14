@@ -43,6 +43,7 @@ echo "==> 3/6 Instalando dependencias de producción (sin herramientas de desarr
 
 echo "==> 4/6 Preparando public_html y .env"
 cp -r public/css public/js public/favicon.ico public/robots.txt "$BUILD/public_html/"
+cp public/google*.html "$BUILD/public_html/" 2>/dev/null || true
 mkdir -p "$BUILD/public_html/images" "$BUILD/public_html/uploads"
 cp -r public/images/brands "$BUILD/public_html/images/"
 cp deploy/index.php "$BUILD/public_html/index.php"
