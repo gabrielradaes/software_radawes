@@ -84,7 +84,10 @@ class UserController extends Controller
             'branch_id' => ['nullable', 'exists:branches,id'],
             'password' => [$user ? 'nullable' : 'required', 'confirmed', Password::min(8)],
             'is_active' => ['boolean'],
-        ], ['email.regex' => \App\Support\Gmail::MESSAGE], ['name' => 'nombre', 'email' => 'Gmail', 'role_id' => 'rol', 'password' => 'contraseña']);
+        ], [
+            'email.regex' => \App\Support\Gmail::MESSAGE,
+            'email.unique' => 'Ya hay un usuario del panel con ese Gmail. Búscalo en la lista de Usuarios (quizás ya se creó).',
+        ], ['name' => 'nombre', 'email' => 'Gmail', 'role_id' => 'rol', 'password' => 'contraseña']);
 
         // Supervisores y vendedores deben tener sucursal; el admin puede ser global
         $role = Role::find($data['role_id']);

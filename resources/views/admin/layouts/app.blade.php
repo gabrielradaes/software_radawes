@@ -89,6 +89,23 @@
 
 <script>
     function confirmar(msg) { return confirm(msg || '¿Seguro?'); }
+
+    // Evita el doble envío (doble clic en Guardar): tras enviar, el botón queda deshabilitado
+    document.addEventListener('submit', (e) => {
+        const form = e.target;
+        if (e.defaultPrevented || form.method.toLowerCase() === 'get' || form.dataset.sending) {
+            if (form.dataset.sending) e.preventDefault();
+            return;
+        }
+        form.dataset.sending = '1';
+        form.querySelectorAll('button[type=submit], button:not([type])').forEach((b) => {
+            b.disabled = true;
+            b.classList.add('opacity-60', 'cursor-wait');
+            if (b.innerText.trim().length < 40) b.dataset.label = b.innerText, b.innerText = 'Guardando…';
+        });
+        // Si el navegador vuelve atrás, se reactiva
+        window.addEventListener('pageshow', () => { delete form.dataset.sending; form.querySelectorAll('button').forEach((b) => { b.disabled = false; b.classList.remove('opacity-60', 'cursor-wait'); if (b.dataset.label) b.innerText = b.dataset.label; }); }, { once: true });
+    });
 </script>
 @stack('scripts')
 </body>
