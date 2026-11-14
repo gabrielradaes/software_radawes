@@ -123,9 +123,20 @@ Route::prefix('{branch}')->middleware(SetBranchFromRoute::class)->group(function
     // Cuenta de cliente (compartida entre tiendas, pero con el tema de la tienda actual)
     Route::middleware('guest:customer')->group(function () {
         Route::get('/registro', [Customer\AuthController::class, 'showRegister'])->name('customer.register');
-        Route::post('/registro', [Customer\AuthController::class, 'register'])->middleware('throttle:10,1');
+        Route::post('/registro', [Customer\AuthController::class, 'register'])->middleware('throttle:30,1');
         Route::get('/ingresar', [Customer\AuthController::class, 'showLogin'])->name('customer.login');
-        Route::post('/ingresar', [Customer\AuthController::class, 'login'])->middleware('throttle:10,1');
+        Route::post('/ingresar', [Customer\AuthController::class, 'login'])->middleware('throttle:30,1');
+
+        // Verificación del Gmail con código de 6 dígitos
+        Route::get('/verificar', [Customer\AuthController::class, 'showVerify'])->name('customer.verify');
+        Route::post('/verificar', [Customer\AuthController::class, 'verify'])->middleware('throttle:30,1');
+        Route::post('/verificar/reenviar', [Customer\AuthController::class, 'resendVerification'])->middleware('throttle:30,1')->name('customer.verify.resend');
+
+        // Recuperar contraseña con código al Gmail
+        Route::get('/recuperar', [Customer\AuthController::class, 'showForgot'])->name('customer.password.forgot');
+        Route::post('/recuperar', [Customer\AuthController::class, 'sendReset'])->middleware('throttle:30,1');
+        Route::get('/recuperar/codigo', [Customer\AuthController::class, 'showReset'])->name('customer.password.reset');
+        Route::post('/recuperar/codigo', [Customer\AuthController::class, 'reset'])->middleware('throttle:30,1');
     });
     Route::middleware('auth:customer')->group(function () {
         Route::post('/salir', [Customer\AuthController::class, 'logout'])->name('customer.logout');

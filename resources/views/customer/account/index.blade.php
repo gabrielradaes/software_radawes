@@ -85,7 +85,7 @@
         <form method="POST" action="{{ route('customer.account.update') }}" class="bg-white rounded-2xl border border-brand-100 p-6 space-y-3">
             @csrf @method('PUT')
             <h2 class="font-display text-xl font-bold">Mis datos</h2>
-            @foreach([['name', 'Nombre completo', 'text'], ['phone', 'Celular', 'text'], ['email', 'Correo', 'email'], ['city', 'Ciudad', 'text'], ['document', 'CI / NIT (para facturas)', 'text'], ['birthdate', 'Fecha de nacimiento', 'date']] as [$f, $label, $type])
+            @foreach([['name', 'Nombre completo', 'text'], ['phone', 'Celular', 'text'], ['email', 'Gmail', 'email'], ['city', 'Ciudad', 'text'], ['document', 'CI / NIT (para facturas)', 'text'], ['birthdate', 'Fecha de nacimiento', 'date']] as [$f, $label, $type])
                 <div>
                     <label class="block text-sm font-medium mb-1">{{ $label }}</label>
                     <input type="{{ $type }}" name="{{ $f }}" value="{{ old($f, $f === 'birthdate' ? $customer->birthdate?->format('Y-m-d') : $customer->$f) }}" class="w-full rounded-xl border border-brand-200 px-3 py-2 text-sm">

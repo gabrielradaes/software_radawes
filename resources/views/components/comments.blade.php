@@ -3,7 +3,7 @@
     $comments = $model->relationLoaded('approvedComments') ? $model->approvedComments : $model->approvedComments()->with('replies')->get();
     $formId = 'form-'.$type.'-'.$model->id;
     $customer = auth('customer')->user();
-    $staff = auth()->user();
+    $staff = auth('web')->user();
 @endphp
 <section id="comentarios-{{ $type }}-{{ $model->id }}" class="{{ $compact ? '' : 'mt-8' }}" x-data="{ replyTo: null, replyName: '' }">
     @unless($compact)

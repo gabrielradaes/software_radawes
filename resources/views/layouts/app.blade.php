@@ -206,7 +206,7 @@
         <div class="max-w-7xl mx-auto px-4 py-5 text-xs text-brand-500 flex flex-col sm:flex-row justify-between gap-2">
             <span>© {{ date('Y') }} Grupo RyE · {{ $currentBranch->name }}. Todos los derechos reservados.</span>
             <span class="flex items-center gap-3">
-                <a href="{{ auth()->check() ? route('admin.dashboard') : route('admin.login') }}" class="hover:text-brand-500">🔐 Acceso equipo</a>
+                <a href="{{ auth('web')->check() ? route('admin.dashboard') : route('admin.login') }}" class="hover:text-brand-500">🔐 Acceso equipo</a>
                 <span>·</span>
                 <span>Hecho con Laravel</span>
             </span>

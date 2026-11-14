@@ -34,9 +34,14 @@
                 <input name="city" value="{{ old('city', 'La Paz') }}" class="w-full rounded-xl border border-brand-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-300">
             </div>
         </div>
-        <div>
-            <label class="block text-sm font-medium mb-1">Correo</label>
-            <input type="email" name="email" value="{{ old('email') }}" required class="w-full rounded-xl border border-brand-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-300">
+        <div x-data="{ v: @js(old('email', '')) }">
+            <label class="block text-sm font-medium mb-1">Gmail</label>
+            <input type="email" name="email" x-model="v" required placeholder="tunombre@gmail.com"
+                   pattern="[^@\s]+@[gG][mM][aA][iI][lL]\.[cC][oO][mM]" title="Debe terminar en @gmail.com"
+                   class="w-full rounded-xl border border-brand-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-300">
+            <p class="text-xs mt-1" :class="v && !/@gmail\.com$/i.test(v.trim()) ? 'text-rose-600' : 'text-brand-500'">
+                Solo cuentas <strong>@gmail.com</strong>. Te enviaremos un código para confirmar que es tuyo.
+            </p>
             @error('email')<p class="text-xs text-rose-600 mt-1">{{ $message }}</p>@enderror
         </div>
         <div class="grid sm:grid-cols-2 gap-4">

@@ -97,7 +97,7 @@ class Theme
     /** Admin, o supervisor/empleado con permiso de productos en esta misma tienda. */
     public static function canEdit(Branch $branch): bool
     {
-        $user = auth()->user();
+        $user = auth('web')->user();
         if (! $user) {
             return false;
         }

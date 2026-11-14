@@ -30,18 +30,32 @@ class AccountController extends Controller
     public function update(Request $request)
     {
         $customer = $request->user('customer');
+        \App\Support\Gmail::normalize($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'phone' => ['required', 'string', 'max:30', 'regex:/^[0-9+\s-]{7,20}$/'],
-            'email' => ['required', 'email', 'max:150', Rule::unique('customers')->ignore($customer)],
+            'email' => \App\Support\Gmail::rules([Rule::unique('customers')->ignore($customer)]),
             'city' => ['nullable', 'string', 'max:80'],
             'document' => ['nullable', 'string', 'max:40'],
             'birthdate' => ['nullable', 'date', 'before:today'],
-        ], [], ['name' => 'nombre', 'phone' => 'celular', 'email' => 'correo', 'document' => 'CI/NIT', 'birthdate' => 'fecha de nacimiento']);
+        ], ['email.regex' => \App\Support\Gmail::MESSAGE], ['name' => 'nombre', 'phone' => 'celular', 'email' => 'Gmail', 'document' => 'CI/NIT', 'birthdate' => 'fecha de nacimiento']);
 
         $data['phone'] = preg_replace('/\D+/', '', $data['phone']);
+        $emailChanged = $data['email'] !== $customer->email;
         $customer->update($data);
+
+        // Cambió de Gmail: hay que verificar el nuevo antes de seguir usando la cuenta
+        if ($emailChanged) {
+            $customer->forceFill(['email_verified_at' => null])->save();
+            \Illuminate\Support\Facades\Auth::guard('customer')->logout();
+            $request->session()->regenerate();
+            $request->session()->put('verify_customer_id', $customer->id);
+            \App\Models\VerificationCode::issue($customer, \App\Models\VerificationCode::VERIFY);
+
+            return redirect()->route('customer.verify')
+                ->with('status', 'Cambiaste tu Gmail: te enviamos un código para confirmarlo.');
+        }
 
         return back()->with('status', 'Datos actualizados.');
     }

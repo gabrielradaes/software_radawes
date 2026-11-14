@@ -25,7 +25,7 @@
                     <td class="px-4 py-3">
                         <div class="flex items-center gap-3">
                             <span class="w-9 h-9 rounded-full bg-brand-100 text-brand-700 font-bold flex items-center justify-center">{{ $c->initials() }}</span>
-                            <div><a href="{{ route('admin.clientes.show', $c) }}" class="font-semibold hover:text-brand-500">{{ $c->name }}</a><p class="text-xs text-slate-400">{{ $c->city }} @if($c->document)· CI {{ $c->document }}@endif @unless($c->password)· <span class="text-amber-700">sin cuenta web</span>@endunless</p></div>
+                            <div><a href="{{ route('admin.clientes.show', $c) }}" class="font-semibold hover:text-brand-500">{{ $c->name }}</a><p class="text-xs text-slate-400">{{ $c->city }} @if($c->document)· CI {{ $c->document }}@endif @unless($c->password)· <span class="text-amber-700">sin cuenta web</span>@endunless @if($c->password && ! $c->email_verified_at)· <span class="text-rose-600">Gmail sin verificar</span>@elseif($c->email_verified_at)· <span class="text-emerald-700">✓ Gmail verificado</span>@endif</p></div>
                         </div>
                     </td>
                     <td class="px-4 py-3"><a href="{{ $c->whatsappLink() }}" target="_blank" class="text-wa-500 font-semibold hover:underline">📱 {{ $c->phone }}</a><p class="text-xs text-slate-500">{{ $c->email }}</p></td>

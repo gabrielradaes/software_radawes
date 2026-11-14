@@ -23,7 +23,7 @@ class InteractionController extends Controller
 
         $liked = $model->toggleLike(
             $request->attributes->get('visitor_token'),
-            $request->user()?->id,
+            $request->user('web')?->id,
             $request->user('customer')?->id,
         );
 
@@ -41,7 +41,7 @@ class InteractionController extends Controller
     {
         $model = $this->resolve($type, $id);
         $customer = $request->user('customer');
-        $staff = $request->user();
+        $staff = $request->user('web');
 
         if (! $customer && ! $staff) {
             session(['url.intended' => url()->previous()]);
