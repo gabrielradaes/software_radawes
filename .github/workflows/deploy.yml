@@ -66,7 +66,15 @@ jobs:
           php artisan key:generate
 
       - name: Ejecutar pruebas
-        run: vendor/bin/phpunit --colors=always
+        run: |
+          set -o pipefail
+          vendor/bin/phpunit --colors=never 2>&1 | tee phpunit.txt
+
+      - name: Resumen de fallas (visible en "Annotations")
+        if: failure()
+        run: |
+          grep -nE '^[0-9]+\) |SQLSTATE|Exception|Error|Expected|Failed asserting|Session has|Test\.php:[0-9]+$' phpunit.txt \
+            | grep -v '/vendor/' | head -40 | while IFS= read -r l; do echo "::error::$l"; done
 
   deploy:
     needs: tests
