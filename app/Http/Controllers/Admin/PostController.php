@@ -144,7 +144,8 @@ class PostController extends Controller
         if (! empty($data['video_url']) && ! video_embed_url($data['video_url'])) {
             abort(back()->withErrors(['video_url' => 'Solo se aceptan enlaces de Facebook, TikTok o YouTube.'])->withInput());
         }
-        if (! $data['title'] && ! $data['body'] && ! $request->hasFile('media') && empty($data['video_url'])) {
+        if (empty($data['title']) && empty($data['body']) && ! $request->hasFile('media') && empty($data['video_url'])
+            && ! ($request->boolean('use_product_images') && ! empty($data['product_id']))) {
             abort(back()->withErrors(['body' => 'La publicación necesita texto o imágenes.'])->withInput());
         }
 

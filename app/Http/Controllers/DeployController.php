@@ -116,6 +116,22 @@ class DeployController extends Controller
             return response()->json(['ok' => false, 'error' => $e->getMessage(), 'steps' => $steps], 500);
         }
 
+        // Velocidad: dejar armadas las cachés de configuración, rutas, vistas y eventos.
+        // Si algo falla, se limpian y la página sigue funcionando (solo un poco más lenta).
+        if (! app()->runningUnitTests()) {
+            try {
+                Artisan::call('optimize');
+                $steps['optimize'] = 'ok';
+            } catch (Throwable $e) {
+                Artisan::call('optimize:clear');
+                $steps['optimize'] = 'omitido: '.$e->getMessage();
+                Log::warning('No se pudieron armar las cachés: '.$e->getMessage());
+            }
+        }
+
+        // Para saber desde GitHub si el hosting ya activó opcache
+        $steps['opcache'] = function_exists('opcache_get_status') && @opcache_get_status(false) ? 'activo' : 'no disponible';
+
         Log::info('Despliegue aplicado', $steps);
 
         return response()->json(['ok' => true, 'steps' => $steps, 'at' => now()->toIso8601String()]);

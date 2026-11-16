@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('title', $product->name.' · '.$currentBranch->name)
-@section('meta_description', $product->short_description)
+@section('meta_description', $product->short_description ?: \Illuminate\Support\Str::limit(strip_tags((string) $product->description), 150) ?: $product->name)
 @section('og_image', $product->primaryImage?->url() ?? '')
 
 @section('content')

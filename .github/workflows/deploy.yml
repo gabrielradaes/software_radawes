@@ -5,7 +5,8 @@
 #   2. Sube por FTPS con lftp (6 archivos en paralelo, con reintentos):
 #        build/rye/          → /home/<usuario>/rye/          (nunca toca .env ni storage/)
 #        build/public_html/  → /home/<usuario>/public_html/  (nunca toca uploads/)
-#   3. Llama a https://<dominio>/_deploy para aplicar migraciones y limpiar cachés.
+#   0. Antes de todo corre las pruebas (job "tests"); si fallan, no se despliega.
+#   3. Llama a https://<dominio>/_deploy: migraciones, limpia y vuelve a armar las cachés.
 #
 # Secretos necesarios (GitHub → Settings → Secrets and variables → Actions):
 #   FTP_SERVER     servidor FTP (ej. paul.cloudserver17.com)
@@ -27,7 +28,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Pruebas automáticas con un PHP igual al del hosting (sin fileinfo, intl ni opcache).
+  # Si alguna falla, NO se despliega y la página pública queda como estaba.
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: rye_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -proot" --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: root
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: :fileinfo, :intl, :opcache, :exif, mbstring, pdo_mysql, gd, zip
+          coverage: none
+
+      - name: Dependencias (con las de pruebas)
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Preparar .env de pruebas
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Ejecutar pruebas
+        run: vendor/bin/phpunit --colors=always
+
   deploy:
+    needs: tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

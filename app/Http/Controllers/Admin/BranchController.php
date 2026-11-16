@@ -76,6 +76,11 @@ class BranchController extends Controller
 
     protected function validated(Request $request, ?Branch $branch = null): array
     {
+        // Aceptar el dominio pegado como enlace (https://www.ejemplo.com/) y limpiarlo antes de validar
+        if ($request->filled('domain')) {
+            $request->merge(['domain' => strtolower(preg_replace('~^https?://|^www\.|/.*$~i', '', trim($request->input('domain'))))]);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'domain' => ['nullable', 'string', 'max:120', 'regex:/^[a-z0-9.-]+$/', Rule::unique('branches')->ignore($branch)],
@@ -96,7 +101,7 @@ class BranchController extends Controller
             'links.*.platform' => ['nullable', 'in:facebook,instagram,tiktok,youtube,web'],
             'links.*.handle' => ['nullable', 'string', 'max:120'],
             'links.*.url' => ['nullable', 'url', 'max:255'],
-        ], [], ['name' => 'nombre', 'city' => 'ciudad', 'whatsapp' => 'WhatsApp']);
+        ], [], ['name' => 'nombre', 'city' => 'ciudad', 'whatsapp' => 'WhatsApp', 'domain' => 'dominio']);
 
         $data['whatsapp'] = preg_replace('/\D+/', '', $data['whatsapp']);
         $data['domain'] = isset($data['domain']) ? strtolower(preg_replace('~^https?://|^www\.|/.*$~', '', $data['domain'])) ?: null : null;

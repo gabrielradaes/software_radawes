@@ -33,8 +33,9 @@ class ProductImageController extends Controller
 
     public function primary(ProductImage $image)
     {
-        $image->product->images()->update(['is_primary' => false]);
-        $image->update(['is_primary' => true]);
+        // Directo en la BD: si ya era la principal, $image->update() no guardaría nada (sin cambios)
+        $image->product->images()->whereKeyNot($image->id)->update(['is_primary' => false]);
+        ProductImage::whereKey($image->id)->update(['is_primary' => true]);
 
         return back()->with('status', 'Imagen principal actualizada.');
     }
