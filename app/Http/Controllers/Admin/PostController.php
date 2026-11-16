@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Post;
 use App\Models\PostMedia;
 use App\Models\Product;
+use App\Support\ImageUpload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -92,8 +93,11 @@ class PostController extends Controller
     public function destroyMedia(Request $request, PostMedia $media)
     {
         $this->authorizeBranch($request, $media->post);
-        if (str_starts_with($media->path, 'uploads/')) {
-            Storage::disk('uploads')->delete(substr($media->path, 8));
+        // No borrar el archivo si otra publicación o un producto usan la misma foto
+        $shared = PostMedia::where('path', $media->path)->whereKeyNot($media->id)->exists()
+            || \App\Models\ProductImage::where('path', $media->path)->exists();
+        if (! $shared) {
+            ImageUpload::delete($media->path);
         }
         $media->delete();
 
@@ -132,7 +136,7 @@ class PostController extends Controller
             'is_pinned' => ['boolean'],
             'published' => ['boolean'],
             'published_at' => ['nullable', 'date'],
-            'media.*' => ['image', 'max:6144'],
+            'media.*' => [ImageUpload::rule(6144)],
             'video_url' => ['nullable', 'url', 'max:500'],
             'use_product_images' => ['boolean'],
         ], [], ['title' => 'título', 'body' => 'texto', 'video_url' => 'enlace de video']);
@@ -182,8 +186,8 @@ class PostController extends Controller
         }
 
         foreach ($request->file('media', []) as $file) {
-            $path = $file->store('posts', 'uploads');
-            $post->media()->create(['type' => 'imagen', 'path' => 'uploads/'.$path, 'sort_order' => ++$order]);
+            $path = ImageUpload::store($file, 'posts');
+            $post->media()->create(['type' => 'imagen', 'path' => $path, 'sort_order' => ++$order]);
         }
     }
 }

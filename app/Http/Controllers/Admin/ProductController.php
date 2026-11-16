@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Support\ImageUpload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -180,7 +181,7 @@ class ProductController extends Controller
             'is_featured' => ['boolean'],
             'is_active' => ['boolean'],
             'published' => ['boolean'],
-            'images.*' => ['image', 'max:4096'],
+            'images.*' => [ImageUpload::rule(6144)],
         ], [
             'compare_at_price.gt' => 'El precio "antes" debe ser mayor al precio actual.',
         ], ['name' => 'nombre', 'category_id' => 'categoría', 'base_price' => 'precio']);
@@ -207,9 +208,9 @@ class ProductController extends Controller
         $hasPrimary = $product->images()->where('is_primary', true)->exists();
         $order = (int) $product->images()->max('sort_order');
         foreach ($request->file('images') as $file) {
-            $path = $file->store('products', 'uploads');
+            $path = ImageUpload::store($file, 'products');
             $product->images()->create([
-                'path' => 'uploads/'.$path,
+                'path' => $path,
                 'alt' => $product->name,
                 'sort_order' => ++$order,
                 'is_primary' => ! $hasPrimary,
