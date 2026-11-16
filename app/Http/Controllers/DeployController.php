@@ -129,8 +129,12 @@ class DeployController extends Controller
             }
         }
 
-        // Para saber desde GitHub si el hosting ya activó opcache
-        $steps['opcache'] = function_exists('opcache_get_status') && @opcache_get_status(false) ? 'activo' : 'no disponible';
+        // opcache guarda el código PHP en memoria: se vacía para que el código recién subido se use al instante
+        if (function_exists('opcache_get_status') && @opcache_get_status(false)) {
+            $steps['opcache'] = function_exists('opcache_reset') && @opcache_reset() ? 'activo (memoria renovada)' : 'activo';
+        } else {
+            $steps['opcache'] = 'no disponible';
+        }
 
         Log::info('Despliegue aplicado', $steps);
 
