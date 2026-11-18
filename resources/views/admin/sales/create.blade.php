@@ -13,12 +13,17 @@
     </form>
 @endunless
 
-<form method="POST" action="{{ route('admin.ventas.store') }}" data-once
+@unless($cashOpen)
+    <p class="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-4 py-2.5">La caja de esta tienda está cerrada: la venta se registra igual, pero no entrará en ningún arqueo. @can('sales.create')<a href="{{ route('admin.caja', ['sucursal' => $branch->id]) }}" class="font-semibold underline">Abrir caja</a>@endcan</p>
+@endunless
+<form method="POST" action="{{ route('admin.ventas.store') }}" data-once @scanned="addSku($event.detail.code)"
       x-data="venta(@js($variants), @js(old('items', [['variant_id' => '', 'quantity' => 1, 'price' => '']])))" class="grid lg:grid-cols-3 gap-6">
     @csrf
     <input type="hidden" name="branch_id" value="{{ $branch->id }}">
     <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 space-y-4">
         <h3 class="font-semibold">Productos · {{ $branch->name }}</h3>
+        @include('admin.partials.scanner', ['placeholder' => 'Escanea la etiqueta o escribe el código (SKU) y Enter…'])
+        <p x-show="scanMsg" x-text="scanMsg" class="text-sm" :class="scanOk ? 'text-emerald-700' : 'text-rose-600'"></p>
         @error('items')<p class="text-sm text-rose-600">{{ $message }}</p>@enderror
         @if($variants->isEmpty())
             <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">No hay productos con stock en esta tienda.</p>
@@ -79,7 +84,20 @@
 <script>
 function venta(variants, items) {
     return {
-        variants, items, discount: 0,
+        variants, items, discount: 0, scanMsg: '', scanOk: true,
+        addSku(code) {
+            const v = this.variants.find(v => (v.sku || '').toUpperCase() === code.toUpperCase());
+            if (!v) { this.scanOk = false; this.scanMsg = `«${code}» no tiene stock en esta tienda o no existe.`; return; }
+            const row = this.items.find(it => it.variant_id == v.id);
+            if (row) {
+                if (row.quantity >= v.stock) { this.scanOk = false; this.scanMsg = `Solo hay ${v.stock} de ${v.label}.`; return; }
+                row.quantity++;
+            } else {
+                const empty = this.items.find(it => !it.variant_id);
+                empty ? Object.assign(empty, { variant_id: String(v.id), quantity: 1, price: '' }) : this.items.push({ variant_id: String(v.id), quantity: 1, price: '' });
+            }
+            this.scanOk = true; this.scanMsg = '✔ ' + v.label;
+        },
         find(it) { return this.variants.find(v => v.id == it.variant_id); },
         base(it) { const v = this.find(it); return v ? v.price : ''; },
         max(it) { const v = this.find(it); return v ? v.stock : 999; },

@@ -1,6 +1,7 @@
 @extends('admin.layouts.app')
 @section('title', 'Variantes y stock: '.$product->name)
 @section('actions')
+    <a href="{{ route('admin.etiquetas', ['producto' => $product->id, 'sucursal' => $branch->id]) }}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-3 py-2 rounded-lg" title="Una etiqueta por cada par en stock de esta tienda">🏷️ Etiquetas</a>
     @can('products.manage')<a href="{{ route('admin.productos.edit', $product) }}" class="text-sm text-slate-600 hover:underline">← Editar producto</a>@else<a href="{{ route('admin.stock.index') }}" class="text-sm text-slate-600 hover:underline">← Volver a stock</a>@endcan
 @endsection
 

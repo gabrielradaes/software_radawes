@@ -93,7 +93,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::middleware('can:sales.create')->group(function () {
             Route::get('ventas/nueva', [Admin\SaleController::class, 'create'])->name('ventas.create');
             Route::post('ventas', [Admin\SaleController::class, 'store'])->name('ventas.store');
+            // Caja diaria
+            Route::get('caja', [Admin\CashController::class, 'index'])->name('caja');
+            Route::post('caja/abrir', [Admin\CashController::class, 'open'])->name('caja.abrir');
+            Route::post('caja/{session}/cerrar', [Admin\CashController::class, 'close'])->name('caja.cerrar');
         });
+        // Etiquetas con código de barras
+        Route::get('etiquetas', [Admin\LabelController::class, 'index'])->middleware('can:stock.view')->name('etiquetas');
         Route::middleware('can:sales.view')->group(function () {
             Route::get('ventas/{sale}', [Admin\SaleController::class, 'show'])->name('ventas.show');
         });

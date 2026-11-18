@@ -61,11 +61,14 @@ class SaleController extends Controller
                 'label' => trim(($s->variant->product->code ? $s->variant->product->code.' · ' : '').$s->variant->product->name.' · '.$s->variant->label()),
                 'price' => $s->variant->effectivePrice(),
                 'stock' => $s->quantity,
+                'sku' => $s->variant->sku,
             ])->sortBy('label')->values();
 
         $customer = $request->filled('cliente') ? Customer::find($request->cliente) : null;
 
-        return view('admin.sales.create', compact('branches', 'branch', 'variants', 'customer', 'scoped'));
+        $cashOpen = (bool) \App\Models\CashSession::openFor($branch->id);
+
+        return view('admin.sales.create', compact('branches', 'branch', 'variants', 'customer', 'scoped', 'cashOpen'));
     }
 
     public function store(Request $request)

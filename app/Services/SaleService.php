@@ -51,6 +51,7 @@ class SaleService
                 'branch_id' => $branch->id,
                 'user_id' => $user->id,
                 'customer_id' => $customer?->id,
+                'cash_session_id' => \App\Models\CashSession::openFor($branch->id)?->id,
                 'status' => 'pagada',
                 'channel' => array_key_exists($channel, self::CHANNELS) ? $channel : 'tienda',
                 'payment_method' => array_key_exists($payment, self::PAYMENTS) ? $payment : 'efectivo',
