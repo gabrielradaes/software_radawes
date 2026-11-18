@@ -25,7 +25,7 @@ class StockController extends Controller
                 $q->where('is_active', true)
                   ->whereHas('product', function ($p) use ($request) {
                       $p->whereNull('deleted_at')
-                        ->when($request->filled('q'), fn ($x) => $x->where(fn ($w) => $w->where('name', 'like', '%'.$request->q.'%')))
+                        ->when($request->filled('q'), fn ($x) => $x->where(fn ($w) => $w->where('name', 'like', '%'.$request->q.'%')->orWhere('code', 'like', '%'.$request->q.'%')))
                         ->when($request->filled('categoria'), fn ($x) => $x->where('category_id', $request->categoria));
                   })
                   ->when($request->filled('q'), fn ($x) => $x->orWhere('sku', 'like', '%'.$request->q.'%'));

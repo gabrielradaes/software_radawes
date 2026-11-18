@@ -15,7 +15,7 @@ class Product extends Model
     use SoftDeletes, HasLikes, HasComments;
 
     protected $fillable = [
-        'category_id', 'brand_id', 'name', 'slug', 'short_description', 'description',
+        'category_id', 'brand_id', 'name', 'code', 'slug', 'short_description', 'description',
         'base_price', 'compare_at_price', 'currency', 'material', 'origin_country',
         'is_featured', 'is_active', 'published_at',
     ];
@@ -127,6 +127,7 @@ class Product extends Model
         }
         return $query->where(function ($q) use ($term) {
             $q->where('name', 'like', "%{$term}%")
+              ->orWhere('code', 'like', "%{$term}%")
               ->orWhere('short_description', 'like', "%{$term}%")
               ->orWhere('material', 'like', "%{$term}%");
         });

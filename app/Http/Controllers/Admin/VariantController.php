@@ -69,38 +69,8 @@ class VariantController extends Controller
             return back()->withErrors(['colores' => 'Elige al menos un color o una talla.']);
         }
 
-        $combos = [];
-        foreach ($colorIds ?: [null] as $c) {
-            foreach ($tallaIds ?: [null] as $t) {
-                $combos[] = array_values(array_filter([$c, $t]));
-            }
-        }
-
-        $existing = $product->variants()->with('attributeValues')->get()
-            ->map(fn ($v) => $v->attributeValues->pluck('id')->sort()->values()->all());
-
-        $created = 0;
-        DB::transaction(function () use ($combos, $existing, $product, &$created) {
-            $base = 'P'.str_pad((string) $product->id, 3, '0', STR_PAD_LEFT);
-            foreach ($combos as $ids) {
-                sort($ids);
-                if ($existing->contains(fn ($e) => $e === $ids)) {
-                    continue;
-                }
-                $values = AttributeValue::whereIn('id', $ids)->get();
-                $sku = $base.'-'.$values->map(fn ($v) => strtoupper(substr(Str::slug($v->value), 0, 3)))->implode('-');
-                while (ProductVariant::where('sku', $sku)->exists()) {
-                    $sku .= '-'.Str::upper(Str::random(2));
-                }
-                $variant = $product->variants()->create(['sku' => $sku]);
-                $variant->attributeValues()->sync($ids);
-                $branchIds = $product->branches()->pluck('branches.id');
-                foreach ($branchIds->isEmpty() ? Branch::pluck('id') : $branchIds as $bid) {
-                    Stock::firstOrCreate(['product_variant_id' => $variant->id, 'branch_id' => $bid], ['quantity' => 0, 'min_quantity' => 1]);
-                }
-                $created++;
-            }
-        });
+        $created = \App\Services\VariantBuilder::generate($product, $colorIds, $tallaIds)
+            ->where('wasRecentlyCreated', true)->count();
 
         return back()->with('status', $created ? "Se crearon $created variantes." : 'Todas esas variantes ya existían.');
     }

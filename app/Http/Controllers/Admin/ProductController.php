@@ -167,8 +167,12 @@ class ProductController extends Controller
 
     protected function validated(Request $request, ?Product $product = null): array
     {
+        if ($request->filled('code')) {
+            $request->merge(['code' => \App\Assistant\Parser::normalizeCode($request->input('code'))]);
+        }
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
+            'code' => ['nullable', 'string', 'max:40', \Illuminate\Validation\Rule::unique('products', 'code')->ignore($product)],
             'category_id' => ['required', 'exists:categories,id'],
             'brand_id' => ['nullable', 'exists:brands,id'],
             'new_brand' => ['nullable', 'string', 'max:120'],
@@ -184,7 +188,8 @@ class ProductController extends Controller
             'images.*' => [ImageUpload::rule(6144)],
         ], [
             'compare_at_price.gt' => 'El precio "antes" debe ser mayor al precio actual.',
-        ], ['name' => 'nombre', 'category_id' => 'categoría', 'base_price' => 'precio']);
+            'code.unique' => 'Ya hay otro producto con ese código.',
+        ], ['name' => 'nombre', 'code' => 'código', 'category_id' => 'categoría', 'base_price' => 'precio']);
 
         if (! empty($data['new_brand'])) {
             $brand = Brand::firstOrCreate(['slug' => Str::slug($data['new_brand'])], ['name' => $data['new_brand']]);

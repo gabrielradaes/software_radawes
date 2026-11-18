@@ -32,6 +32,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('logout', [Admin\AuthController::class, 'logout'])->name('logout');
         Route::get('/', Admin\DashboardController::class)->name('dashboard');
 
+        // Asistente por voz/texto (cada orden se valida con los permisos del rol)
+        Route::get('asistente', [Admin\AssistantController::class, 'index'])->name('asistente');
+        Route::middleware('throttle:60,1')->group(function () {
+            Route::post('asistente/mensaje', [Admin\AssistantController::class, 'message'])->name('asistente.mensaje');
+            Route::post('asistente/confirmar', [Admin\AssistantController::class, 'confirm'])->name('asistente.confirmar');
+            Route::post('asistente/cancelar', [Admin\AssistantController::class, 'cancel'])->name('asistente.cancelar');
+            Route::delete('asistente', [Admin\AssistantController::class, 'clear'])->name('asistente.limpiar');
+        });
+
         // Catálogo (admin y supervisor)
         Route::middleware('can:products.manage')->group(function () {
             Route::resource('productos', Admin\ProductController::class)->except('show')->parameters(['productos' => 'product'])->scoped(['product' => 'id']);

@@ -13,9 +13,16 @@
 
     <div class="lg:col-span-2 space-y-6">
         <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-            <x-admin.field label="Nombre" name="name">
-                <input name="name" value="{{ old('name', $product->name) }}" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
-            </x-admin.field>
+            <div class="grid sm:grid-cols-3 gap-4">
+                <div class="sm:col-span-2">
+                    <x-admin.field label="Nombre" name="name">
+                        <input name="name" value="{{ old('name', $product->name) }}" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+                    </x-admin.field>
+                </div>
+                <x-admin.field label="Código del modelo" name="code">
+                    <input name="code" value="{{ old('code', $product->code) }}" maxlength="40" placeholder="Ej.: CH-210" class="w-full rounded-lg border border-slate-300 px-3 py-2 uppercase">
+                </x-admin.field>
+            </div>
             <div class="grid sm:grid-cols-2 gap-4">
                 <x-admin.field label="Categoría" name="category_id">
                     <select name="category_id" required x-model="cat" class="w-full rounded-lg border border-slate-300 px-3 py-2">
