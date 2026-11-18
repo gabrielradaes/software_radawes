@@ -19,6 +19,8 @@
         ['Publicaciones', route('admin.publicaciones.index'), 'admin.publicaciones.*', 'posts.manage', '📣'],
         ['Comentarios', route('admin.comentarios.index'), 'admin.comentarios.*', 'comments.moderate', '💬'],
         ['Leads WhatsApp', route('admin.leads.index'), 'admin.leads.*', 'leads.manage', '🟢'],
+        ['Ventas', route('admin.ventas.index'), 'admin.ventas.*', 'sales.view', '🧾'],
+        ['CRM · Seguimientos', route('admin.crm'), 'admin.crm*', 'customers.view', '🤝'],
         ['Clientes', route('admin.clientes.index'), 'admin.clientes.*', 'customers.view', '🧑‍🤝‍🧑'],
         ['Usuarios', route('admin.usuarios.index'), 'admin.usuarios.*', 'users.manage', '👥'],
         ['Sucursales', route('admin.sucursales.index'), 'admin.sucursales.*', 'branches.manage', '🏬'],

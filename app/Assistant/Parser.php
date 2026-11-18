@@ -49,10 +49,29 @@ class Parser
     {
         $a = $this->a;
 
+        $staffWord = 'vendedor|vendedora|supervisor|supervisora|administrador|administradora|usuario|usuaria|empleado|empleada';
+
         return match (true) {
             (bool) preg_match('/\b(ayuda|que puedes hacer|que sabes hacer|como funciona|como te uso|ejemplos?|comandos)\b/', $a) => 'ayuda',
-            (bool) preg_match('/\b(nuevo|nueva|registra(?:r|lo)?|crea(?:r|lo)?|da(?:r)? de alta|alta de)\b/', $a) => 'nuevo_producto',
-            (bool) preg_match('/\b(salida|vendi|vendio|vendimos|vendieron|vendido|se llevo|se llevaron|retira(?:r|ron)?|saca(?:r|ron)?|baja de)\b/', $a) => 'salida',
+            (bool) preg_match('/\b(?:nuevo|nueva|crea(?:r)?|registra(?:r)?|agrega(?:r)?)\s+(?:un |una |al |a la |a )?(?:'.$staffWord.')\b/', $a) => 'nuevo_usuario',
+            (bool) preg_match('/\b(?:nueva|crea(?:r)?|agrega(?:r)?)\s+(?:la |una )?(?:clase|categoria|subcategoria)\b/', $a) => 'nueva_clase',
+            (bool) preg_match('/\b(?:nuevo cliente|nueva clienta|cliente nuevo|clienta nueva|(?:registra|agrega|crea|anota)(?:r)?\s+(?:al |a la |el |la |un |una |a )?(?:cliente|clienta))\b/', $a) => 'nuevo_cliente',
+            (bool) preg_match('/\b(?:ya (?:le )?(?:llame|hable|escribi|contacte|visite|lo hice|esta hecho)|marca(?:la|lo)? como hech[ao]|tarea hecha|seguimiento hecho|completa(?:r)? (?:la tarea|el seguimiento))\b/', $a) => 'tarea_hecha',
+            (bool) preg_match('/\b(?:que (?:tengo|hay)(?: pendiente)?(?: para)? (?:hoy|manana|esta semana)|mis (?:tareas|seguimientos|pendientes|recordatorios)|(?:tareas|seguimientos|pendientes|recordatorios)(?: de| para)? (?:hoy|la semana|esta semana)|que seguimientos|a quien (?:tengo que|debo|hay que) llamar)\b/', $a) => 'tareas',
+            (bool) preg_match('/\b(?:recuerdame|recordarme|recordar|recordatorio|agenda(?:r|me)?|programa(?:r)? (?:una llamada|un seguimiento)|seguimiento|tengo que (?:llamar|escribir|avisar)|hay que (?:llamar|escribir|avisar)|llamar a|escribirle a|avisarle a|avisale a)\b/', $a) => 'tarea',
+            (bool) preg_match('/\b(?:nota|anota(?:r)?|apunta(?:r)?|toma nota|hable con|le escribi a)\b/', $a) => 'nota',
+            (bool) preg_match('/\b(?:ficha|historial|datos|informacion|info)\s+(?:de|del)\b|\bquien es\b/', $a) => 'ficha',
+            (bool) preg_match('/\b(?:marca(?:lo|la)?|pon(?:lo|la|le)?|pasa(?:lo|la)?|cambia(?:lo|la)?|ahora es)\b.*\b(?:como|a)?\s*(?:prospecto|interesad[oa]|frecuente|perdid[oa]|vip)\b|\betiqueta(?:lo|la|r)?\b|\btalla (?:habitual|de siempre)\b|\bsu talla es\b|\bcalza\s+(?:la\s+)?\d/', $a) => 'cliente_crm',
+            (bool) preg_match('/\b(?:cuanto (?:vendimos|vendi|vendieron|se vendio|hemos vendido|llevamos)|ventas de(?:l)? (?:hoy|ayer|la semana|esta semana|el mes|este mes|mes)|reporte|resumen de ventas|(?:lo|los) mas vendidos?|como (?:van|vamos con) las ventas)\b/', $a) => 'reporte',
+            (bool) preg_match('/\b(?:leads?|consultas de whatsapp|mensajes de whatsapp|quien(?:es)? (?:pregunto|preguntaron|escribio|escribieron))\b/', $a) => 'leads',
+            (bool) preg_match('/\bcomentarios?\b/', $a) => 'comentarios',
+            (bool) preg_match('/\b(?:traspasa(?:r)?|traspaso|transfiere|transferir)\b/', $a)
+                || (preg_match('/\b(?:envia(?:r)?|manda(?:r)?|pasa(?:r)?|mueve|mover|lleva(?:r)?)\b/', $a) && preg_match('/\b(?:a|al|para|hacia)\s+(?:la\s+)?(?:tienda\s+(?:de\s+)?)?(?:calacoto|comercio|el alto)\b/', $a) && count(array_filter($this->branches(), 'is_int')) >= 1) => 'traspaso',
+            (bool) preg_match('/\b(?:cambia(?:r|le)?|sube(?:le)?|subir|baja(?:le)?|bajar|actualiza(?:r|le)?|modifica(?:r)?)\b[^.]*\bprecio\b|\bnuevo precio\b|\bprecio nuevo\b/', $a) => 'precio',
+            (bool) preg_match('/\b(?:desactiva(?:r|lo|la)?|oculta(?:r|lo|la)?|activa(?:r|lo|la)?|reactiva(?:r|lo|la)?|muestralo|muestrala|vuelve a mostrar|ya no (?:vendemos|lo vendemos)|saca(?:lo|la)? de la (?:pagina|tienda|web))\b/', $a) => 'estado_producto',
+            (bool) preg_match('/\b(nuevo|nueva|registra(?:r|lo)?|crea(?:r|lo)?|da(?:r)? de alta|alta de)\b/', $a) && ! preg_match('/\b(?:vendi|vendio|vendimos|venta)\b/', $a) => 'nuevo_producto',
+            (bool) preg_match('/\b(vendi|vendio|vendimos|vendieron|vendido|venta|se llevo|se llevaron|compro|compraron|cobra(?:r|le)?)\b/', $a) => 'venta',
+            (bool) preg_match('/\b(salida|retira(?:r|ron)?|saca(?:r|ron)?|baja de|devolucion al proveedor)\b/', $a) => 'salida',
             (bool) preg_match('/\b(entrada|ingreso|ingresaron|ingresa(?:r)?|llego|llegaron|recibimos|recibi|repon(?:er|go)?|suma(?:r)?|agrega(?:r)?)\b/', $a) => 'entrada',
             (bool) preg_match('/\b(publica(?:r|lo|la)?|publicacion|postea(?:r|lo)?|sube(?:lo)? a (?:novedades|la pagina))\b/', $a) => 'publicar',
             (bool) preg_match('/\b(cuant[oa]s?|hay|queda[n]?|tienes|tenemos|stock|existencias?|disponibles?|busca(?:r)?|consulta(?:r)?|ver)\b|\?/', $a) => 'consulta',
@@ -350,6 +369,193 @@ class Parser
         $charOffset = mb_strlen(substr($this->a, 0, $byteOffset));
 
         return mb_substr($this->t, $charOffset, $chars);
+    }
+
+    // ---------------------------------------------------------------- CRM
+
+    /** Celular boliviano (8 dígitos que empiezan con 6 o 7), con o sin +591 y espacios. */
+    public function phone(): ?string
+    {
+        if (preg_match('/\b(?:celular|cel|telefono|numero|whatsapp|wsp|fono)\s*(?:es|:|de)?\s*((?:\+?\s*591)?[\d\s-]{7,16})/', $this->a, $m)) {
+            $d = preg_replace('/^591/', '', preg_replace('/\D+/', '', $m[1]));
+            if (preg_match('/^[2-7]\d{6,7}$/', $d)) {
+                return $d;
+            }
+        }
+        if (preg_match('/(?<![\d.,])(?:\+?591\s*)?([67]\d{7})(?![\d.,])/', $this->a, $m)) {
+            return $m[1];
+        }
+        if (preg_match('/(?<![\d.,])([67]\d{2})\s(\d{2})\s(\d{3})(?![\d.,])/', $this->a, $m)) {
+            return $m[1].$m[2].$m[3];
+        }
+
+        return null;
+    }
+
+    /** Gmail escrito o dictado ("carlos punto mamani arroba gmail punto com"). */
+    public function email(): ?string
+    {
+        if (preg_match('/([a-z0-9][a-z0-9._%+-]*@[a-z0-9.-]+\.[a-z]{2,})/', $this->a, $m)) {
+            return $m[1];
+        }
+        if (preg_match('/((?:[a-z0-9_-]+(?:\s+punto\s+|\s*\.\s*)?){1,5})\s*arroba\s*([a-z]+)\s*(?:punto|\.)\s*com\b/', $this->a, $m)) {
+            $local = preg_replace(['/\s+punto\s+/', '/\s+/'], ['.', ''], trim($m[1]));
+            $local = preg_replace('/^(?:gmail|correo|email|es|su)\.?/', '', $local);
+
+            return $local !== '' ? $local.'@'.$m[2].'.com' : null;
+        }
+
+        return null;
+    }
+
+    public function document(): ?string
+    {
+        return preg_match('/\b(?:ci|carnet|cedula|nit)\s*(?:de identidad)?\s*(?:es|:|numero|nro)?\s*(\d{5,12}(?:\s*[a-z]{2})?)\b/', $this->a, $m) ? strtoupper(str_replace(' ', '', $m[1])) : null;
+    }
+
+    public function city(): ?string
+    {
+        $cities = ['la paz' => 'La Paz', 'el alto' => 'El Alto', 'cochabamba' => 'Cochabamba', 'santa cruz' => 'Santa Cruz', 'oruro' => 'Oruro',
+            'potosi' => 'Potosí', 'sucre' => 'Sucre', 'tarija' => 'Tarija', 'beni' => 'Beni', 'trinidad' => 'Trinidad', 'pando' => 'Pando', 'cobija' => 'Cobija'];
+        if (preg_match('/\b(?:de|vive en|es de|ciudad)\s+('.implode('|', array_keys($cities)).')\b/', $this->a, $m)) {
+            return $cities[$m[1]];
+        }
+
+        return null;
+    }
+
+    public function payment(): ?string
+    {
+        return match (true) {
+            (bool) preg_match('/\b(qr|codigo qr|simple)\b/', $this->a) => 'qr',
+            (bool) preg_match('/\b(tarjeta|debito|credito|pos)\b/', $this->a) => 'tarjeta',
+            (bool) preg_match('/\b(transferencia|deposito|transfirio|deposito)\b/', $this->a) => 'transferencia',
+            (bool) preg_match('/\b(efectivo|cash|al contado)\b/', $this->a) => 'efectivo',
+            default => null,
+        };
+    }
+
+    public function source(): ?string
+    {
+        return match (true) {
+            (bool) preg_match('/\btiktok\b/', $this->a) => 'tiktok',
+            (bool) preg_match('/\b(facebook|face)\b/', $this->a) => 'facebook',
+            (bool) preg_match('/\b(por|del?)\s+whatsapp\b/', $this->a) => 'whatsapp',
+            (bool) preg_match('/\b(recomend|referid|un amigo|una amiga)/', $this->a) => 'referido',
+            (bool) preg_match('/\b(pagina web|la pagina|internet)\b/', $this->a) => 'web',
+            default => null,
+        };
+    }
+
+    /** Etapa del embudo mencionada ("márcalo como frecuente"). */
+    public function stage(): ?string
+    {
+        if (preg_match('/\b(prospecto|interesad[oa]|frecuente|perdid[oa])\b/', $this->a, $m)) {
+            return ['interesada' => 'interesado', 'perdida' => 'perdido'][$m[1]] ?? $m[1];
+        }
+        if (preg_match('/\b(?:como|a|es)\s+cliente\b(?!\s+(?:nuevo|nueva))/', $this->a) && ! preg_match('/\bel cliente\b/', $this->a)) {
+            return 'cliente';
+        }
+
+        return null;
+    }
+
+    /** Etiquetas: "etiquétalo como VIP", "etiqueta mayorista", "es VIP". */
+    public function tagNames(): array
+    {
+        $tags = [];
+        if (preg_match('/\betiqueta(?:lo|la|r|s)?\s+(?:como\s+|de\s+)?([a-z0-9 ]{2,40}?)(?=$|[,.;]|\s+(?:a|al|para|de)\s)/', $this->a, $m)) {
+            foreach (preg_split('/\s*(?:,|\by\b)\s*/', trim($m[1])) as $t) {
+                $tags[] = trim($t);
+            }
+        }
+        if (preg_match('/\b(vip|mayorista)\b/', $this->a, $m)) {
+            $tags[] = $m[1];
+        }
+
+        return array_values(array_unique(array_filter($tags, fn ($t) => $t !== '' && ! preg_match('/^(a|al|el|la|como|cliente)$/', $t))));
+    }
+
+    /** Talla habitual: "calza 41", "su talla es 41", "talla habitual 40". */
+    public function usualSize(): ?string
+    {
+        return preg_match('/\b(?:calza(?:\s+la)?|su talla es|talla habitual(?: es)?|talla de siempre(?: es)?|usa (?:la )?talla)\s*(\d{2})\b/', $this->a, $m) ? $m[1] : null;
+    }
+
+    public function interactionType(): string
+    {
+        return match (true) {
+            (bool) preg_match('/\b(llame|llamada|llamo|hable por telefono|le llame)\b/', $this->a) => 'llamada',
+            (bool) preg_match('/\b(whatsapp|le escribi|escribio|mensaje)\b/', $this->a) => 'whatsapp',
+            (bool) preg_match('/\b(vino|visito|paso por la tienda|estuvo en la tienda)\b/', $this->a) => 'visita',
+            default => 'nota',
+        };
+    }
+
+    /** Nombre de persona para un cliente nuevo: "registra al cliente Carlos Mamani celular…". */
+    public function personName(): ?string
+    {
+        return $this->nameAfter('/\b(?:cliente|clienta|se llama|llamad[oa])\s+(?:nuevo|nueva)?\s*(?:se llama|llamad[oa]|el senor|la senora|senor|senora|don|dona)?\s*/');
+    }
+
+    /** Nombre de persona que viene después de $regex, hasta celular, correo, ciudad, números… */
+    public function nameAfter(string $regex): ?string
+    {
+        if (! preg_match($regex, $this->a, $m, PREG_OFFSET_CAPTURE)) {
+            return null;
+        }
+        $start = $m[0][1] + strlen($m[0][0]);
+        $tail = substr($this->a, $start);
+        $cut = preg_match('/(\s+[a-z0-9._%+-]+@|\s+[a-z0-9_-]+\s+(?:punto\s+[a-z0-9_-]+\s+)*arroba\b|\s*[,.;:]|\s+(?:celular|cel|telefono|numero|whatsapp|wsp|gmail|correo|email|ci|carnet|nit|de\s+(?:la paz|el alto|cochabamba|santa cruz|oruro|potosi|sucre|tarija)|vive|es de|talla|calza|que|con|por|en|y\s+(?:su|es))\b|\s+\+?\d)/', $tail, $mm, PREG_OFFSET_CAPTURE) ? $mm[0][1] : strlen($tail);
+        $name = trim($this->slice($start, mb_strlen(substr($tail, 0, $cut))), ' ,.;:-');
+
+        return mb_strlen($name) >= 3 && ! preg_match('/^\d/', $name) ? self::title($name) : null;
+    }
+
+    /** Fecha y hora mencionadas (para seguimientos). */
+    public function when(): ?array
+    {
+        return Dates::parse($this->a);
+    }
+
+    /** Período de un reporte. @return array{0: \Illuminate\Support\Carbon, 1: \Illuminate\Support\Carbon, 2: string} */
+    public function period(): array
+    {
+        $now = now();
+
+        return match (true) {
+            (bool) preg_match('/\bayer\b/', $this->a) => [$now->copy()->subDay()->startOfDay(), $now->copy()->subDay()->endOfDay(), 'ayer'],
+            (bool) preg_match('/\b(semana pasada)\b/', $this->a) => [$now->copy()->subWeek()->startOfWeek(), $now->copy()->subWeek()->endOfWeek(), 'la semana pasada'],
+            (bool) preg_match('/\b(mes pasado)\b/', $this->a) => [$now->copy()->subMonthNoOverflow()->startOfMonth(), $now->copy()->subMonthNoOverflow()->endOfMonth(), 'el mes pasado'],
+            (bool) preg_match('/\bsemana\b/', $this->a) => [$now->copy()->startOfWeek(), $now->copy(), 'esta semana'],
+            (bool) preg_match('/\b(mes|mensual)\b/', $this->a) => [$now->copy()->startOfMonth(), $now->copy(), 'este mes'],
+            (bool) preg_match('/\b(ano|anual)\b/', $this->a) => [$now->copy()->startOfYear(), $now->copy(), 'este año'],
+            default => [$now->copy()->startOfDay(), $now->copy(), 'hoy'],
+        };
+    }
+
+    /** Rol de un usuario nuevo del panel. */
+    public function staffRole(): ?string
+    {
+        return match (true) {
+            (bool) preg_match('/\b(administrador|administradora|admin)\b/', $this->a) => 'admin',
+            (bool) preg_match('/\b(supervisor|supervisora|encargad[oa])\b/', $this->a) => 'supervisor',
+            (bool) preg_match('/\b(vendedor|vendedora|empleado|empleada)\b/', $this->a) => 'empleado',
+            default => null,
+        };
+    }
+
+    /** Texto después de ":" o después de una palabra de referencia (para notas). */
+    public function after(string $regex): ?string
+    {
+        if (preg_match($regex, $this->a, $m, PREG_OFFSET_CAPTURE)) {
+            $start = $m[0][1] + strlen($m[0][0]);
+            $rest = trim($this->slice($start, mb_strlen(substr($this->a, $start))), " :,-.");
+
+            return $rest !== '' ? Str::ucfirst($rest) : null;
+        }
+
+        return null;
     }
 
     /** Primer número suelto (para respuestas cortas: "450", "3"). */

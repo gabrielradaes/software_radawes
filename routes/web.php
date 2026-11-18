@@ -76,6 +76,29 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('clientes/nuevo', [Admin\CustomerController::class, 'create'])->name('clientes.create');
             Route::post('clientes', [Admin\CustomerController::class, 'store'])->name('clientes.store');
             Route::get('clientes/{customer}', [Admin\CustomerController::class, 'show'])->name('clientes.show');
+
+            // CRM: seguimientos, notas, etapa y etiquetas
+            Route::get('crm', [Admin\CrmController::class, 'index'])->name('crm');
+            Route::post('crm/seguimientos', [Admin\CrmController::class, 'storeTask'])->name('crm.tareas.store');
+            Route::patch('crm/seguimientos/{task}', [Admin\CrmController::class, 'toggleTask'])->name('crm.tareas.toggle');
+            Route::delete('crm/seguimientos/{task}', [Admin\CrmController::class, 'destroyTask'])->name('crm.tareas.destroy');
+            Route::post('clientes/{customer}/historial', [Admin\CrmController::class, 'storeInteraction'])->name('clientes.historial');
+            Route::patch('clientes/{customer}/crm', [Admin\CrmController::class, 'updateCustomer'])->name('clientes.crm');
+        });
+
+        // Ventas
+        Route::middleware('can:sales.view')->group(function () {
+            Route::get('ventas', [Admin\SaleController::class, 'index'])->name('ventas.index');
+        });
+        Route::middleware('can:sales.create')->group(function () {
+            Route::get('ventas/nueva', [Admin\SaleController::class, 'create'])->name('ventas.create');
+            Route::post('ventas', [Admin\SaleController::class, 'store'])->name('ventas.store');
+        });
+        Route::middleware('can:sales.view')->group(function () {
+            Route::get('ventas/{sale}', [Admin\SaleController::class, 'show'])->name('ventas.show');
+        });
+        Route::post('ventas/{sale}/anular', [Admin\SaleController::class, 'cancel'])->middleware('can:sales.cancel')->name('ventas.anular');
+        Route::middleware('can:customers.view')->group(function () {
         });
         Route::patch('clientes/{customer}', [Admin\CustomerController::class, 'update'])->middleware('can:customers.manage')->name('clientes.update');
 

@@ -15,6 +15,16 @@
         <option value="registrados" @selected(request('filtro') === 'registrados')>Con cuenta web</option>
         <option value="inactivos" @selected(request('filtro') === 'inactivos')>Desactivados</option>
     </select>
+    <select name="etapa" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <option value="">Todas las etapas</option>
+        @foreach(\App\Models\Customer::STAGES as $k => [$label])<option value="{{ $k }}" @selected(request('etapa') === $k)>{{ $label }}</option>@endforeach
+    </select>
+    @if($tags->isNotEmpty())
+        <select name="etiqueta" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <option value="">Todas las etiquetas</option>
+            @foreach($tags as $t)<option value="{{ $t->id }}" @selected(request('etiqueta') == $t->id)>{{ $t->name }}</option>@endforeach
+        </select>
+    @endif
     <button class="bg-slate-800 text-white text-sm px-4 py-2 rounded-lg">Buscar</button>
 </form>
 <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -26,7 +36,7 @@
                     <td class="px-4 py-3">
                         <div class="flex items-center gap-3">
                             <span class="w-9 h-9 rounded-full bg-brand-100 text-brand-700 font-bold flex items-center justify-center">{{ $c->initials() }}</span>
-                            <div><a href="{{ route('admin.clientes.show', $c) }}" class="font-semibold hover:text-brand-500">{{ $c->name }}</a><p class="text-xs text-slate-400">{{ $c->city }} @if($c->document)· CI {{ $c->document }}@endif @unless($c->password)· <span class="text-amber-700">sin cuenta web</span>@endunless @if($c->password && ! $c->email_verified_at)· <span class="text-rose-600">Gmail sin verificar</span>@elseif($c->email_verified_at)· <span class="text-emerald-700">✓ Gmail verificado</span>@endif</p></div>
+                            <div><a href="{{ route('admin.clientes.show', $c) }}" class="font-semibold hover:text-brand-500">{{ $c->name }}</a> <span class="text-[11px] px-1.5 py-0.5 rounded-full {{ $c->stageClass() }}">{{ $c->stageLabel() }}</span>@foreach($c->tags as $t) <span class="text-[11px] px-1.5 py-0.5 rounded-full bg-slate-800 text-white">{{ $t->name }}</span>@endforeach<p class="text-xs text-slate-400">{{ $c->city }} @if($c->document)· CI {{ $c->document }}@endif @unless($c->password)· <span class="text-amber-700">sin cuenta web</span>@endunless @if($c->password && ! $c->email_verified_at)· <span class="text-rose-600">Gmail sin verificar</span>@elseif($c->email_verified_at)· <span class="text-emerald-700">✓ Gmail verificado</span>@endif</p></div>
                         </div>
                     </td>
                     <td class="px-4 py-3"><a href="{{ $c->whatsappLink() }}" target="_blank" class="text-wa-500 font-semibold hover:underline">📱 {{ $c->phone }}</a><p class="text-xs text-slate-500">{{ $c->email }}</p></td>

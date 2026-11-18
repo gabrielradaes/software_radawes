@@ -9,6 +9,8 @@ class Gmail
 {
     public const MESSAGE = 'Solo se aceptan correos que terminen en @gmail.com.';
 
+    public const REGEX = '/^[a-z0-9](?:[a-z0-9.+_-]*[a-z0-9])?@gmail\.com$/';
+
     /** Pasa el campo a minúsculas y sin espacios antes de validar. */
     public static function normalize(Request $request, string $field = 'email'): void
     {
@@ -19,7 +21,7 @@ class Gmail
 
     public static function rules(array $extra = []): array
     {
-        return ['required', 'string', 'max:150', 'email:rfc', 'regex:/^[a-z0-9](?:[a-z0-9.+_-]*[a-z0-9])?@gmail\.com$/', ...$extra];
+        return ['required', 'string', 'max:150', 'email:rfc', 'regex:'.self::REGEX, ...$extra];
     }
 
     /** juan.perez@gmail.com → ju*******z@gmail.com */

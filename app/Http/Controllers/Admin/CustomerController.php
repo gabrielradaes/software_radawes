@@ -18,6 +18,9 @@ class CustomerController extends Controller
             }))
             ->when($request->filtro === 'registrados', fn ($query) => $query->whereNotNull('password'))
             ->when($request->filtro === 'inactivos', fn ($query) => $query->where('is_active', false))
+            ->when($request->filled('etapa'), fn ($query) => $query->where('stage', $request->etapa))
+            ->when($request->filled('etiqueta'), fn ($query) => $query->whereHas('tags', fn ($t) => $t->whereKey($request->etiqueta)))
+            ->with('tags')
             ->latest()
             ->paginate(25)->withQueryString();
 
@@ -27,7 +30,9 @@ class CustomerController extends Controller
             'semana' => Customer::where('created_at', '>=', now()->subDays(7))->count(),
         ];
 
-        return view('admin.customers.index', compact('customers', 'q', 'totals'));
+        $tags = \App\Models\Tag::orderBy('name')->get();
+
+        return view('admin.customers.index', compact('customers', 'q', 'totals', 'tags'));
     }
 
     public function create()
@@ -74,10 +79,25 @@ class CustomerController extends Controller
             'comments.commentable',
             'likes.likeable',
             'whatsappLeads.product.primaryImage', 'whatsappLeads.variant.attributeValues.attribute', 'whatsappLeads.branch',
-            'sales.branch', 'sales.items.variant.product',
+            'sales.branch', 'sales.items.variant.product', 'sales.items.variant.attributeValues.attribute',
+            'interactions.user', 'tasks.user', 'tags', 'branch',
         ]);
 
-        return view('admin.customers.show', compact('customer'));
+        // Historial unificado (lo más reciente primero)
+        $timeline = collect()
+            ->merge($customer->interactions->map(fn ($i) => ['at' => $i->created_at, 'icon' => mb_substr($i->typeLabel(), 0, 2), 'title' => trim(mb_substr($i->typeLabel(), 2)).($i->user ? ' · '.$i->user->name : ''), 'body' => $i->body]))
+            ->merge($customer->sales->map(fn ($s) => ['at' => $s->sold_at, 'icon' => '🧾', 'title' => "Compra {$s->code} · ".money($s->total).($s->status === 'anulada' ? ' (anulada)' : ''), 'body' => $s->items->map(fn ($it) => $it->quantity.' × '.$it->variant->product->name.' '.$it->variant->label())->implode(', '), 'url' => route('admin.ventas.show', $s)]))
+            ->merge($customer->whatsappLeads->map(fn ($l) => ['at' => $l->created_at, 'icon' => '🟢', 'title' => 'Consultó por WhatsApp · '.$l->status, 'body' => $l->product?->name ?? ($l->post?->title ?? 'Consulta general')]))
+            ->merge($customer->comments->map(fn ($c) => ['at' => $c->created_at, 'icon' => '💬', 'title' => 'Comentó en '.($c->commentable?->title ?? $c->commentable?->name ?? 'la página'), 'body' => $c->body]))
+            ->sortByDesc('at')->values();
+
+        $stats = [
+            'spent' => (float) $customer->sales->where('status', 'pagada')->sum('total'),
+            'count' => $customer->sales->where('status', 'pagada')->count(),
+            'last' => $customer->sales->where('status', 'pagada')->max('sold_at'),
+        ];
+
+        return view('admin.customers.show', compact('customer', 'timeline', 'stats'));
     }
 
     public function update(Request $request, Customer $customer)

@@ -66,7 +66,8 @@ class AsistenteTest extends TestCase
 
         $this->assertNull((new Parser('el precio es 480'))->code(), '"es 480" no es un código');
         $this->assertSame('CH-210', (new Parser('¿cuántos ch210 quedan?'))->code());
-        $this->assertSame('salida', (new Parser('vendí 2 del CH-210 talla 41 café'))->intent());
+        $this->assertSame('venta', (new Parser('vendí 2 del CH-210 talla 41 café'))->intent());
+        $this->assertSame('salida', (new Parser('saca 2 pares del CH-210 talla 41 café'))->intent());
         $this->assertSame(2, (new Parser('vendí 2 del CH-210 talla 41 café'))->quantity());
         $this->assertSame('entrada', (new Parser('llegaron 5 pares del CH-210'))->intent());
         $this->assertSame('consulta', (new Parser('¿Cuántos CH-210 talla 40 hay?'))->intent());
@@ -137,18 +138,25 @@ class AsistenteTest extends TestCase
         $this->confirmar($sup);
         $this->assertSame(5, $this->stock($p, '40', 'Negro'));
 
-        // Falta el color → lo pregunta
+        // Venta: falta el color → lo pregunta; luego el cliente ("no" = sin cliente, no cancela)
         $this->assertStringContainsString('color', $this->decir($sup, 'vendí 2 del CH-210 talla 40')['text']);
-        $r = $this->decir($sup, 'negro');
+        $this->assertStringContainsString('nombre de quién', $this->decir($sup, 'negro')['text']);
+        $r = $this->decir($sup, 'no');
         $this->assertTrue($r['confirm'], $r['text']);
         $this->decir($sup, 'confirmo');
         $this->assertSame(3, $this->stock($p, '40', 'Negro'));
+        $this->assertSame(1, \App\Models\Sale::count());
+
+        // Salida que no es venta (ej. devolución al proveedor)
+        $this->decir($sup, 'saca 1 par del CH-210 talla 40 negro');
+        $this->decir($sup, 'sí');
+        $this->assertSame(2, $this->stock($p, '40', 'Negro'));
 
         // No deja vender más de lo que hay
         $r = $this->decir($sup, 'vendí 9 del CH-210 talla 40 negro');
         $this->assertStringContainsString('No alcanza', $r['text']);
         $this->decir($sup, 'cancelar');
-        $this->assertSame(3, $this->stock($p, '40', 'Negro'));
+        $this->assertSame(2, $this->stock($p, '40', 'Negro'));
     }
 
     public function test_consultar_stock_por_codigo_nombre_y_clase(): void

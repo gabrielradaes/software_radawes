@@ -28,12 +28,30 @@ use Illuminate\Support\Str;
  */
 class Assistant
 {
+    use Skills\Crm, Skills\Sales, Skills\Admin;
+
     private const NEEDS = [
         'nuevo_producto' => 'products.manage',
         'entrada' => 'stock.adjust',
         'salida' => 'stock.adjust',
         'publicar' => 'posts.manage',
         'consulta' => 'stock.view',
+        'venta' => 'sales.create',
+        'reporte' => 'sales.view',
+        'leads' => 'leads.manage',
+        'nuevo_cliente' => 'customers.view',
+        'ficha' => 'customers.view',
+        'nota' => 'customers.view',
+        'tarea' => 'customers.view',
+        'tareas' => 'customers.view',
+        'tarea_hecha' => 'customers.view',
+        'cliente_crm' => 'customers.view',
+        'traspaso' => 'stock.transfer',
+        'precio' => 'products.manage',
+        'estado_producto' => 'products.manage',
+        'nueva_clase' => 'products.manage',
+        'nuevo_usuario' => 'users.manage',
+        'comentarios' => 'comments.moderate',
     ];
 
     private const LABELS = [
@@ -42,9 +60,31 @@ class Assistant
         'salida' => 'registrar salidas de stock',
         'publicar' => 'hacer publicaciones',
         'consulta' => 'consultar stock',
+        'venta' => 'registrar ventas',
+        'reporte' => 'ver reportes de ventas',
+        'leads' => 'ver las consultas de WhatsApp',
+        'nuevo_cliente' => 'registrar clientes',
+        'ficha' => 'ver fichas de clientes',
+        'nota' => 'anotar en la ficha de clientes',
+        'tarea' => 'agendar seguimientos',
+        'tareas' => 'ver seguimientos',
+        'tarea_hecha' => 'cerrar seguimientos',
+        'cliente_crm' => 'cambiar la etapa o etiquetas de clientes',
+        'traspaso' => 'hacer traspasos entre tiendas',
+        'precio' => 'cambiar precios',
+        'estado_producto' => 'activar u ocultar productos',
+        'nueva_clase' => 'crear clases de calzado',
+        'nuevo_usuario' => 'crear usuarios del panel',
+        'comentarios' => 'moderar comentarios',
     ];
 
+    /** Órdenes que trabajan sobre un producto que ya existe. */
+    private const PRODUCT_INTENTS = ['entrada', 'salida', 'publicar', 'consulta', 'venta', 'precio', 'estado_producto', 'traspaso'];
+
     public array $state;
+
+    /** Aviso que se antepone a la próxima respuesta. */
+    private ?string $notice = null;
 
     public function __construct(public User $user, ?array $state = null)
     {
@@ -75,10 +115,15 @@ class Assistant
         $p = new Parser($text);
         $step = $this->state['step'] ?? null;
 
-        if ($step && $p->isNo()) {
+        // "no" a "¿a nombre de quién?" significa sin cliente, no cancelar
+        $answeringCustomer = $step === 'collect' && ($this->state['ask'] ?? null) === 'customer' && ! $p->says('/\b(cancela|anula|olvida)/');
+        if ($step && $p->isNo() && ! $answeringCustomer) {
             return $this->cancel();
         }
-        if ($step === 'confirm') {
+        $intent = $p->intent();
+        $otherOrder = $intent && $intent !== ($this->state['intent'] ?? null) && ! in_array($intent, ['consulta', 'entrada'], true);
+
+        if ($step === 'confirm' && ! $otherOrder) {
             if ($p->isYes()) {
                 return $this->execute();
             }
@@ -90,8 +135,10 @@ class Assistant
 
             return $this->reply('¿Lo guardo? Responde **sí** o **no**, o dime qué corregir (ej.: «el precio es 480»).', confirm: true);
         }
+        if ($step && $otherOrder) {
+            $this->notice = '(Lo anterior quedó sin guardar.) ';
+        }
 
-        $intent = $p->intent();
         $current = $this->state['intent'] ?? null;
         $interrupts = $intent && $intent !== $current && $intent !== 'consulta'
             && ($intent !== 'entrada' || ! $current);   // "agrega…" mientras se pregunta algo no es otra orden
@@ -111,6 +158,9 @@ class Assistant
         }
         if (! $intent) {
             $intent = ($p->code() || $this->findProduct($p)['product'] ?? null) ? 'consulta' : null;
+        }
+        if (! $intent && $this->user->can('customers.view') && ($p->phone() || ($this->findCustomer($p)['customer'] ?? null))) {
+            $intent = 'ficha';
         }
         if (! $intent) {
             return $this->notUnderstood();
@@ -153,8 +203,8 @@ class Assistant
         $intent = $this->state['intent'];
         $d = &$this->state['data'];
 
-        // Producto existente (para todo menos producto nuevo)
-        if ($intent !== 'nuevo_producto') {
+        // Producto existente
+        if (in_array($intent, self::PRODUCT_INTENTS, true)) {
             $found = $this->findProduct($p, $ask === 'product');
             if ($found['product']) {
                 $d['product_id'] = $found['product']->id;
@@ -205,12 +255,21 @@ class Assistant
             }
         } else {
             $q = $p->quantity() ?? $p->quantityEach() ?? (in_array($ask, ['qty'], true) ? $p->firstNumber() : null);
-            if ($q !== null && in_array($intent, ['entrada', 'salida'], true)) {
+            if ($q !== null && in_array($intent, ['entrada', 'salida', 'venta', 'traspaso'], true)) {
                 $d['qty'] = (int) $q;
             }
             if ($intent === 'publicar' && ($layout = $p->layout())) {
                 $d['layout'] = $layout;
             }
+        }
+
+        // Datos propios de cada orden (CRM, ventas, administración)
+        $own = 'fill'.Str::studly($intent);
+        if (method_exists($this, $own)) {
+            $this->{$own}($p, $ask);
+        }
+        if (! in_array($intent, [...self::PRODUCT_INTENTS, 'nuevo_producto'], true)) {
+            return;
         }
 
         // Colores y tallas (respuestas cortas cuando se están preguntando)
@@ -247,7 +306,7 @@ class Assistant
         $scoped = $this->user->scopedBranchId();
 
         // ---- producto existente
-        if ($intent !== 'nuevo_producto') {
+        if (in_array($intent, self::PRODUCT_INTENTS, true)) {
             if (! empty($d['options'])) {
                 $list = Product::whereIn('id', $d['options'])->get()->values()
                     ->map(fn ($pr, $i) => ($i + 1).'. '.$pr->name.($pr->code ? " ({$pr->code})" : ''))->implode("\n");
@@ -274,6 +333,7 @@ class Assistant
             'entrada', 'salida' => $this->nextMove($product, $prefix),
             'publicar' => $this->nextPublish($product, $prefix),
             'consulta' => $this->runQuery($product),
+            default => $this->{'next'.Str::studly($intent)}($product, $prefix),
         };
     }
 
@@ -644,6 +704,7 @@ class Assistant
                 'nuevo_producto' => $this->executeNew(),
                 'entrada', 'salida' => $this->executeMove(),
                 'publicar' => $this->executePublish(),
+                default => $this->{'execute'.Str::studly($intent)}(),
             };
         } catch (\RuntimeException $e) {
             $this->state['step'] = 'collect';
@@ -772,11 +833,37 @@ class Assistant
         if ($this->user->can('products.manage')) {
             $ex[] = '«Nuevo botín Chelsea código CH-210, colores café y negro, tallas del 38 al 42, 3 pares de cada uno, precio 450'.($this->user->scopedBranchId() ? '' : ', en Calacoto').'»';
         }
+        if ($this->user->can('sales.create')) {
+            $ex[] = '🧾 «Vendí 1 CH-210 talla 41 café a Carlos Mamani, pagó con QR»';
+        }
+        if ($this->user->can('sales.view')) {
+            $ex[] = '📊 «¿Cuánto vendimos hoy?» · «ventas de la semana»';
+        }
         if ($this->user->can('stock.adjust')) {
-            $ex[] = '«Llegaron 5 pares del CH-210 talla 40 negro» · «Vendí 1 CH-210 talla 41 café»';
+            $ex[] = '📦 «Llegaron 5 pares del CH-210 talla 40 negro»';
+        }
+        if ($this->user->can('stock.transfer')) {
+            $ex[] = '🔁 «Traspasa 2 pares del CH-210 talla 40 negro de Calacoto a El Alto»';
+        }
+        if ($this->user->can('customers.view')) {
+            $ex[] = '🧑 «Nuevo cliente Carlos Mamani celular 70011222, calza 41» · «¿quién es 70011222?»';
+            $ex[] = '📝 «Nota para Carlos: quiere el mocasín café talla 41» · «márcalo como frecuente» · «etiquétalo VIP»';
+            $ex[] = '📅 «Recuérdame llamar a Carlos el viernes a las 10» · «¿qué seguimientos tengo hoy?» · «ya llamé a Carlos»';
+        }
+        if ($this->user->can('leads.manage')) {
+            $ex[] = '🟢 «¿Quién preguntó por WhatsApp?»';
+        }
+        if ($this->user->can('products.manage')) {
+            $ex[] = '💲 «Cambia el precio del CH-210 a 480» · «oculta el CH-210» · «nueva clase Pantuflas»';
         }
         if ($this->user->can('posts.manage')) {
-            $ex[] = '«Publica el CH-210 en carrusel» (puedes adjuntar fotos 📷)';
+            $ex[] = '📣 «Publica el CH-210 en carrusel» (puedes adjuntar fotos 📷)';
+        }
+        if ($this->user->can('comments.moderate')) {
+            $ex[] = '💬 «Últimos comentarios»';
+        }
+        if ($this->user->can('users.manage')) {
+            $ex[] = '👥 «Nuevo vendedor Juan Pérez juan.perez@gmail.com en Calacoto»';
         }
 
         return $ex;
@@ -815,8 +902,10 @@ class Assistant
 
     private function reply(string $text, ?array $table = null, array $links = [], bool $confirm = false, array $meta = []): array
     {
+        [$notice, $this->notice] = [$this->notice, null];
+
         return [
-            'text' => $text,
+            'text' => ($notice ?? '').$text,
             'table' => $table,
             'links' => $links,
             'confirm' => $confirm,

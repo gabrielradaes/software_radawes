@@ -11,7 +11,7 @@
 <div x-data="asistente(@js($messages), @js($pending))" class="max-w-3xl mx-auto flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden" style="height: calc(100vh - 9.5rem); min-height: 480px">
 
     {{-- Conversación --}}
-    <div x-ref="list" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+    <div x-ref="list" id="asistente-list" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
         <template x-for="(m, i) in messages" :key="m.key">
             <div :class="m.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
                 <div :class="m.role === 'user' ? 'bg-brand-700 text-white rounded-2xl rounded-br-md' : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-bl-md'"
@@ -68,7 +68,7 @@
             <label class="shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-slate-100 hover:bg-slate-200 text-xl flex items-center justify-center cursor-pointer" title="Adjuntar fotos">
                 📷<input type="file" accept="image/*" multiple class="hidden" @change="addFiles($event)">
             </label>
-            <textarea x-ref="input" x-model="text" rows="1" @keydown.enter.prevent="if(!$event.shiftKey) send()" @input="grow()"
+            <textarea x-ref="input" id="asistente-input" x-model="text" rows="1" @keydown.enter.prevent="if(!$event.shiftKey) send()" @input="grow()"
                       placeholder="Escribe o habla…" class="flex-1 min-w-0 resize-none rounded-xl border border-slate-300 px-3 py-2.5 text-[15px] max-h-40"></textarea>
             <button type="submit" :disabled="busy || (!text.trim() && !files.length)" class="shrink-0 h-11 sm:h-12 px-3 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold disabled:opacity-40" title="Enviar"><span class="hidden sm:inline">Enviar</span><span class="sm:hidden">➤</span></button>
         </div>
@@ -95,8 +95,8 @@ function asistente(initial, pending) {
         },
         add(m) { m.key = m.id ? 's' + m.id : 'l' + (++this.seq); this.messages.push(m); },
         saveSpeak() { try { localStorage.setItem('rye-asistente-voz', this.speak ? '1' : '0'); } catch (e) {} },
-        scroll() { setTimeout(() => { const el = this.$root.querySelector('[x-ref=list]'); if (el) el.scrollTop = el.scrollHeight; }, 30); },
-        grow() { const t = this.$root.querySelector('[x-ref=input]'); if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 160) + 'px'; },
+        scroll() { setTimeout(() => { const el = document.getElementById('asistente-list'); if (el) el.scrollTop = el.scrollHeight; }, 30); },
+        grow() { const t = document.getElementById('asistente-input'); if (!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 160) + 'px'; },
 
         // --- Voz: dictado del navegador (gratis). Se reinicia solo hasta que el usuario lo detenga.
         toggleMic() {

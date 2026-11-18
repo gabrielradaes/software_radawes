@@ -8,6 +8,10 @@ if (! function_exists('whatsapp_link')) {
     function whatsapp_link(?string $phone, ?string $message = null): string
     {
         $phone = preg_replace('/\D+/', '', (string) $phone);
+        // Celular boliviano guardado sin código de país (70011222) → 59170011222
+        if (preg_match('/^[67]\d{7}$/', $phone)) {
+            $phone = '591'.$phone;
+        }
         $url = 'https://wa.me/'.$phone;
 
         return $message ? $url.'?text='.rawurlencode($message) : $url;
