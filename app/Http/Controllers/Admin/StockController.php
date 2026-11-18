@@ -43,6 +43,15 @@ class StockController extends Controller
             'bajo' => Stock::where('branch_id', $branch->id)->whereColumn('quantity', '<=', 'min_quantity')->count(),
             'agotado' => Stock::where('branch_id', $branch->id)->where('quantity', 0)->count(),
         ];
+        // Inventario valorizado (a costo y a precio de venta)
+        $value = Stock::join('product_variants', 'product_variants.id', '=', 'stocks.product_variant_id')
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            ->whereNull('products.deleted_at')->where('stocks.branch_id', $branch->id)->where('stocks.quantity', '>', 0)
+            ->selectRaw('SUM(stocks.quantity * COALESCE(products.cost, 0)) as costo, SUM(stocks.quantity * COALESCE(product_variants.price, products.base_price)) as venta, SUM(CASE WHEN products.cost IS NULL THEN stocks.quantity ELSE 0 END) as sin_costo')
+            ->first();
+        $totals['valor_costo'] = (float) $value->costo;
+        $totals['valor_venta'] = (float) $value->venta;
+        $totals['sin_costo'] = (int) $value->sin_costo;
 
         $categories = Category::orderBy('parent_id')->orderBy('sort_order')->get();
 

@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Branch extends Model
 {
+    use Concerns\Audited;
+
+    protected array $audited = ['name' => 'Nombre', 'whatsapp' => 'WhatsApp', 'domain' => 'Dominio', 'address' => 'Dirección', 'is_active' => 'Activa', 'color_primary' => 'Color'];
+
     protected $fillable = [
         'name', 'slug', 'domain', 'brand_name', 'brand_tagline', 'brand_small', 'tagline', 'description', 'city', 'country', 'address',
         'phone', 'whatsapp', 'email', 'opening_hours', 'latitude', 'longitude',

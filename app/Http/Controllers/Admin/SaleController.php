@@ -36,6 +36,11 @@ class SaleController extends Controller
             'mes' => (float) $paid(now()->startOfMonth())->sum('total'),
             'pares_mes' => (int) \App\Models\SaleItem::whereIn('sale_id', $paid(now()->startOfMonth())->select('id'))->sum('quantity'),
         ];
+        // Utilidad del mes: (precio − costo) × pares, solo de lo vendido con costo registrado; el descuento se resta
+        $items = \App\Models\SaleItem::whereIn('sale_id', $paid(now()->startOfMonth())->select('id'));
+        $totals['utilidad_mes'] = (float) (clone $items)->whereNotNull('unit_cost')->selectRaw('SUM((unit_price - unit_cost) * quantity) as u')->value('u')
+            - (float) $paid(now()->startOfMonth())->sum('discount');
+        $totals['sin_costo_mes'] = (int) (clone $items)->whereNull('unit_cost')->sum('quantity');
 
         return view('admin.sales.index', compact('sales', 'branches', 'branchId', 'scoped', 'totals', 'from', 'to'));
     }

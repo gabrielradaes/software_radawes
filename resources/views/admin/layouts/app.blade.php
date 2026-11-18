@@ -16,6 +16,7 @@
         ['Productos', route('admin.productos.index'), 'admin.productos.*', 'products.manage', '👞'],
         ['Categorías y clases', route('admin.categorias.index'), 'admin.categorias.*', 'products.manage', '🗂️'],
         ['Stock', route('admin.stock.index'), 'admin.stock.*', 'stock.view', '📦'],
+        ['Compras', route('admin.compras.index'), 'admin.compras.*|admin.proveedores.*|admin.curvas.*', 'stock.adjust', '🚚'],
         ['Publicaciones', route('admin.publicaciones.index'), 'admin.publicaciones.*', 'posts.manage', '📣'],
         ['Comentarios', route('admin.comentarios.index'), 'admin.comentarios.*', 'comments.moderate', '💬'],
         ['Leads WhatsApp', route('admin.leads.index'), 'admin.leads.*', 'leads.manage', '🟢'],
@@ -24,6 +25,8 @@
         ['Clientes', route('admin.clientes.index'), 'admin.clientes.*', 'customers.view', '🧑‍🤝‍🧑'],
         ['Usuarios', route('admin.usuarios.index'), 'admin.usuarios.*', 'users.manage', '👥'],
         ['Sucursales', route('admin.sucursales.index'), 'admin.sucursales.*', 'branches.manage', '🏬'],
+        ['Copias de seguridad', route('admin.respaldos.index'), 'admin.respaldos.*', 'users.manage', '💾'],
+        ['Auditoría', route('admin.auditoria'), 'admin.auditoria', 'users.manage', '🕵️'],
         ['Colores de la tienda', route('admin.colores.index'), 'admin.colores.*', 'products.manage', '🎨'],
     ];
 @endphp
@@ -41,7 +44,7 @@
         <nav class="p-3 space-y-0.5">
             @foreach($nav as [$label, $url, $pattern, $perm, $icon])
                 @if(! $perm || $user->can($perm))
-                    <a href="{{ $url }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ request()->routeIs($pattern) ? 'bg-brand-800 text-white' : 'hover:bg-brand-900 text-brand-200' }}">
+                    <a href="{{ $url }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ request()->routeIs(...explode("|", $pattern)) ? 'bg-brand-800 text-white' : 'hover:bg-brand-900 text-brand-200' }}">
                         <span class="w-5 text-center">{{ $icon }}</span> {{ $label }}
                     </a>
                 @endif

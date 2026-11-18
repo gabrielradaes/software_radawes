@@ -5,10 +5,14 @@
 @endsection
 
 @section('content')
-<div class="grid grid-cols-3 gap-4 mb-5 max-w-xl">
+<div class="grid grid-cols-3 @can('stock.adjust') lg:grid-cols-5 @endcan gap-4 mb-5 @cannot('stock.adjust') max-w-xl @endcannot">
     <div class="bg-white rounded-xl border border-slate-200 p-4"><p class="text-xs text-slate-500">Unidades</p><p class="text-2xl font-bold">{{ $totals['unidades'] }}</p></div>
     <div class="bg-white rounded-xl border border-amber-200 p-4"><p class="text-xs text-amber-700">Stock bajo</p><p class="text-2xl font-bold text-amber-700">{{ $totals['bajo'] }}</p></div>
     <div class="bg-white rounded-xl border border-rose-200 p-4"><p class="text-xs text-rose-700">Agotados</p><p class="text-2xl font-bold text-rose-700">{{ $totals['agotado'] }}</p></div>
+    @can('stock.adjust')
+        <div class="bg-white rounded-xl border border-slate-200 p-4"><p class="text-xs text-slate-500">Inventario a costo</p><p class="text-xl font-bold">{{ money($totals['valor_costo']) }}</p>@if($totals['sin_costo'])<p class="text-[11px] text-amber-700">{{ $totals['sin_costo'] }} pares sin costo registrado</p>@endif</div>
+        <div class="bg-white rounded-xl border border-emerald-200 p-4"><p class="text-xs text-emerald-700">Inventario a precio de venta</p><p class="text-xl font-bold text-emerald-700">{{ money($totals['valor_venta']) }}</p></div>
+    @endcan
 </div>
 
 @can('stock.adjust')

@@ -3,11 +3,14 @@
 @section('actions')@can('sales.create')<a href="{{ route('admin.ventas.create') }}" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">+ Nueva venta</a>@endcan @endsection
 
 @section('content')
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-5">
     <div class="bg-white rounded-xl border border-slate-200 p-4"><p class="text-xs text-slate-500">Hoy</p><p class="text-xl font-bold">{{ money($totals['hoy']) }}</p></div>
     <div class="bg-white rounded-xl border border-slate-200 p-4"><p class="text-xs text-slate-500">Esta semana</p><p class="text-xl font-bold">{{ money($totals['semana']) }}</p></div>
     <div class="bg-white rounded-xl border border-slate-200 p-4"><p class="text-xs text-slate-500">Este mes</p><p class="text-xl font-bold text-emerald-700">{{ money($totals['mes']) }}</p></div>
     <div class="bg-white rounded-xl border border-slate-200 p-4"><p class="text-xs text-slate-500">Pares vendidos (mes)</p><p class="text-xl font-bold">{{ $totals['pares_mes'] }}</p></div>
+    @can('stock.adjust')
+        <div class="bg-white rounded-xl border border-emerald-200 p-4 col-span-2 lg:col-span-1"><p class="text-xs text-emerald-700">Ganancia (mes)</p><p class="text-xl font-bold text-emerald-700">{{ money($totals['utilidad_mes']) }}</p>@if($totals['sin_costo_mes'])<p class="text-[11px] text-amber-700">{{ $totals['sin_costo_mes'] }} pares vendidos sin costo registrado</p>@endif</div>
+    @endcan
 </div>
 
 <form method="GET" class="bg-white rounded-xl border border-slate-200 p-4 mb-5 flex flex-wrap gap-3 items-end">

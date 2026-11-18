@@ -10,7 +10,9 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, Concerns\Audited;
+
+    protected array $audited = ['name' => 'Nombre', 'email' => 'Gmail', 'role_id' => 'Rol', 'branch_id' => 'Tienda', 'is_active' => 'Activo'];
 
     protected $fillable = [
         'role_id', 'branch_id', 'name', 'email', 'phone', 'avatar_path', 'is_active', 'password',

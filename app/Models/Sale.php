@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sale extends Model
 {
+    use Concerns\Audited;
+
+    protected bool $auditCreated = false;
+
+    protected array $audited = ['status' => 'Estado', 'total' => 'Total', 'customer_id' => 'Cliente'];
+
     protected $fillable = [
         'code', 'branch_id', 'user_id', 'customer_id', 'status', 'channel', 'payment_method',
         'subtotal', 'discount', 'total', 'notes', 'sold_at',

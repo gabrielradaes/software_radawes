@@ -12,17 +12,20 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use SoftDeletes, HasLikes, HasComments;
+    use SoftDeletes, HasLikes, HasComments, Concerns\Audited;
+
+    protected array $audited = ['name' => 'Nombre', 'code' => 'Código', 'base_price' => 'Precio', 'compare_at_price' => 'Precio antes', 'cost' => 'Costo', 'is_active' => 'Visible', 'published_at' => 'Publicado', 'category_id' => 'Clase'];
 
     protected $fillable = [
         'category_id', 'brand_id', 'name', 'code', 'slug', 'short_description', 'description',
-        'base_price', 'compare_at_price', 'currency', 'material', 'origin_country',
+        'base_price', 'compare_at_price', 'cost', 'currency', 'material', 'origin_country',
         'is_featured', 'is_active', 'published_at',
     ];
 
     protected $casts = [
         'base_price' => 'decimal:2',
         'compare_at_price' => 'decimal:2',
+        'cost' => 'decimal:2',
         'is_featured' => 'boolean',
         'is_active' => 'boolean',
         'published_at' => 'datetime',

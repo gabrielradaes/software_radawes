@@ -105,6 +105,15 @@ class DeployController extends Controller
         $steps = [];
 
         try {
+            // Copia de seguridad antes de tocar la base de datos
+            if (! app()->runningUnitTests()) {
+                try {
+                    $steps['backup'] = basename(\App\Services\DatabaseBackup::run('antes de desplegar'));
+                } catch (Throwable $e) {
+                    $steps['backup'] = 'falló: '.$e->getMessage();
+                }
+            }
+
             Artisan::call('migrate', ['--force' => true]);
             $steps['migrate'] = trim(Artisan::output()) ?: 'sin cambios';
 

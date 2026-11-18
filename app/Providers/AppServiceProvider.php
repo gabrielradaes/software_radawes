@@ -40,6 +40,15 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Autorización por permisos de rol: @can('stock.view'), middleware can:..., $user->can(...)
+        // Copia de seguridad diaria sin cron: la primera visita del día al panel la crea después de responder
+        if (! $this->app->runningInConsole()) {
+            $this->app->terminating(function () {
+                if (request()->is('admin*') && auth('web')->check()) {
+                    \App\Services\DatabaseBackup::dailyIfDue();
+                }
+            });
+        }
+
         Gate::before(function (User $user, string $ability) {
             if (! $user->is_active) {
                 return false;

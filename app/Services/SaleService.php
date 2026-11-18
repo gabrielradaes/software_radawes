@@ -63,7 +63,7 @@ class SaleService
 
             foreach ($rows as [$variant, $stock, $qty, $price]) {
                 $sale->items()->create([
-                    'product_variant_id' => $variant->id, 'quantity' => $qty, 'unit_price' => $price,
+                    'product_variant_id' => $variant->id, 'quantity' => $qty, 'unit_price' => $price, 'unit_cost' => $variant->product->cost,
                     'discount' => 0, 'line_total' => $price * $qty,
                 ]);
                 $stock->move('venta', -$qty, $user->id, "Venta {$sale->code}", $sale);

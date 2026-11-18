@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Category extends Model
 {
+    use Concerns\Audited;
+
+    protected array $audited = ['name' => 'Nombre', 'is_active' => 'Activa', 'parent_id' => 'Dentro de'];
+
     protected $fillable = [
         'parent_id', 'name', 'slug', 'description', 'icon', 'image_path', 'sort_order', 'is_active',
     ];

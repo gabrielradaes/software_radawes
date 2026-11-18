@@ -123,6 +123,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Administración (solo admin)
         Route::resource('usuarios', Admin\UserController::class)->except('show')->parameters(['usuarios' => 'user'])->middleware('can:users.manage');
+
+        // Compras al proveedor, proveedores y curvas de tallas (quien carga stock)
+        Route::middleware('can:stock.adjust')->group(function () {
+            Route::get('compras', [Admin\PurchaseController::class, 'index'])->name('compras.index');
+            Route::get('compras/nueva', [Admin\PurchaseController::class, 'create'])->name('compras.create');
+            Route::post('compras', [Admin\PurchaseController::class, 'store'])->name('compras.store');
+            Route::get('compras/{purchase}', [Admin\PurchaseController::class, 'show'])->whereNumber('purchase')->name('compras.show');
+            Route::get('proveedores', [Admin\PurchaseController::class, 'suppliers'])->name('proveedores.index');
+            Route::post('proveedores', [Admin\PurchaseController::class, 'storeSupplier'])->name('proveedores.store');
+            Route::put('proveedores/{supplier}', [Admin\PurchaseController::class, 'updateSupplier'])->name('proveedores.update');
+            Route::get('curvas', [Admin\PurchaseController::class, 'curves'])->name('curvas.index');
+            Route::post('curvas', [Admin\PurchaseController::class, 'storeCurve'])->name('curvas.store');
+            Route::delete('curvas/{curve}', [Admin\PurchaseController::class, 'destroyCurve'])->name('curvas.destroy');
+        });
+
+        // Solo administradores: copias de seguridad y auditoría
+        Route::middleware('can:users.manage')->group(function () {
+            Route::get('respaldos', [Admin\SystemController::class, 'backups'])->name('respaldos.index');
+            Route::post('respaldos', [Admin\SystemController::class, 'createBackup'])->middleware('throttle:6,1')->name('respaldos.store');
+            Route::get('respaldos/{file}', [Admin\SystemController::class, 'downloadBackup'])->name('respaldos.download');
+            Route::get('auditoria', [Admin\SystemController::class, 'audit'])->name('auditoria');
+        });
         Route::resource('sucursales', Admin\BranchController::class)->except('show')->parameters(['sucursales' => 'branch'])->scoped(['branch' => 'id'])->middleware('can:branches.manage');
     });
 });

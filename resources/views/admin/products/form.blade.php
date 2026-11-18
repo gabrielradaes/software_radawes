@@ -99,6 +99,12 @@
             <x-admin.field label="Precio antes (oferta)" name="compare_at_price" help="Déjalo vacío si no está en oferta">
                 <input type="number" step="0.01" min="0" name="compare_at_price" value="{{ old('compare_at_price', $product->compare_at_price) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
             </x-admin.field>
+            <x-admin.field label="Costo por par (Bs)" name="cost" help="Lo que te cuesta. Se actualiza solo con cada ingreso de mercadería. No se muestra en la página.">
+                <input type="number" step="0.01" min="0" name="cost" value="{{ old('cost', $product->cost) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+            </x-admin.field>
+            @if($product->cost && $product->base_price > 0)
+                <p class="text-sm text-emerald-700">Ganancia por par: <strong>{{ money($product->base_price - $product->cost) }}</strong> ({{ round((1 - $product->cost / $product->base_price) * 100) }}%)</p>
+            @endif
         </div>
         <div class="bg-white rounded-xl border border-slate-200 p-6">
             <h2 class="font-semibold mb-1">Se vende en</h2>

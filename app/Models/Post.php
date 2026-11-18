@@ -11,7 +11,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Post extends Model
 {
-    use SoftDeletes, HasLikes, HasComments;
+    use SoftDeletes, HasLikes, HasComments, Concerns\Audited;
+
+    protected bool $auditCreated = false;
+
+    protected array $audited = ['title' => 'Título', 'published_at' => 'Publicado', 'branch_id' => 'Tienda'];
 
     protected $fillable = [
         'user_id', 'branch_id', 'product_id', 'type', 'title', 'body', 'is_pinned', 'published_at',

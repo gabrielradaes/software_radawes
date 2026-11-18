@@ -180,6 +180,7 @@ class ProductController extends Controller
             'description' => ['nullable', 'string'],
             'base_price' => ['required', 'numeric', 'min:0'],
             'compare_at_price' => ['nullable', 'numeric', 'gt:base_price'],
+            'cost' => ['nullable', 'numeric', 'min:0'],
             'material' => ['nullable', 'string', 'max:120'],
             'origin_country' => ['nullable', 'string', 'max:80'],
             'is_featured' => ['boolean'],
