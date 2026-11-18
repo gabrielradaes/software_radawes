@@ -22,23 +22,24 @@ class SaleService
     /**
      * @param  array<int, array{variant: ProductVariant, quantity: int, unit_price?: float|null}>  $lines
      */
+    /** @param float $prepaid lo que el cliente ya pagó antes (adelanto de un apartado): en caja entra solo el resto */
     public static function register(User $user, Branch $branch, ?Customer $customer, array $lines, string $payment = 'efectivo',
-        string $channel = 'tienda', float $discount = 0, ?string $notes = null): Sale
+        string $channel = 'tienda', float $discount = 0, ?string $notes = null, float $prepaid = 0): Sale
     {
         if (! $lines) {
             throw new RuntimeException('La venta no tiene productos.');
         }
 
-        return DB::transaction(function () use ($user, $branch, $customer, $lines, $payment, $channel, $discount, $notes) {
+        return DB::transaction(function () use ($user, $branch, $customer, $lines, $payment, $channel, $discount, $notes, $prepaid) {
             $subtotal = 0;
             $rows = [];
             foreach ($lines as $l) {
                 $variant = $l['variant']->loadMissing('product', 'attributeValues.attribute');
                 $qty = max(1, (int) $l['quantity']);
                 $stock = Stock::where('product_variant_id', $variant->id)->where('branch_id', $branch->id)->lockForUpdate()->first();
-                $have = (int) ($stock->quantity ?? 0);
+                $have = $stock?->available() ?? 0;   // los pares apartados no se pueden vender
                 if ($have < $qty) {
-                    throw new RuntimeException("No alcanza el stock de {$variant->product->name} ".($variant->label() ?: '')." en {$branch->name} (hay {$have}).");
+                    throw new RuntimeException("No alcanza el stock de {$variant->product->name} ".($variant->label() ?: '')." en {$branch->name} (disponibles: {$have}).");
                 }
                 $price = isset($l['unit_price']) && $l['unit_price'] !== null ? (float) $l['unit_price'] : $variant->effectivePrice();
                 $subtotal += $price * $qty;
@@ -69,6 +70,7 @@ class SaleService
                 ]);
                 $stock->move('venta', -$qty, $user->id, "Venta {$sale->code}", $sale);
             }
+            OpsService::cash($branch->id, 'venta', $sale->payment_method, (float) $sale->total - $prepaid, $user, $sale, $sale->code.($customer ? ' · '.$customer->name : ''));
 
             if ($customer) {
                 if (! $customer->branch_id) {
@@ -96,6 +98,7 @@ class SaleService
                 $stock->move('venta', $item->quantity, $user->id, "Anulación de {$sale->code}".($reason ? ": {$reason}" : ''), $sale);
             }
             $sale->update(['status' => 'anulada', 'notes' => trim(($sale->notes ? $sale->notes."\n" : '').'Anulada por '.$user->name.($reason ? ": {$reason}" : ''))]);
+            OpsService::cash($sale->branch_id, 'anulacion', $sale->payment_method, -(float) $sale->total, $user, $sale, "Anulación {$sale->code}");
         });
     }
 }

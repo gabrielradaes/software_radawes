@@ -46,6 +46,11 @@ class Sale extends Model
         return $this->hasMany(SaleItem::class);
     }
 
+    public function returns(): HasMany
+    {
+        return $this->hasMany(SaleReturn::class)->latest('id');
+    }
+
     /** Genera un código secuencial por sucursal: RYE-LP-000001 */
     public static function nextCode(Branch $branch): string
     {

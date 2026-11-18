@@ -57,6 +57,23 @@ class CashController extends Controller
         return back()->with('status', abs($diff) < 0.01 ? 'Caja cerrada: cuadra perfecto ✔' : 'Caja cerrada con una diferencia de '.money($diff).'.');
     }
 
+    /** Gasto (pasaje, almuerzo, retiro del dueño) o ingreso de dinero fuera de una venta. */
+    public function movement(Request $request, CashSession $session)
+    {
+        $this->authorizeBranch($request, $session->branch_id);
+        abort_if($session->closed_at, 422, 'Esta caja ya está cerrada.');
+        $data = $request->validate([
+            'type' => ['required', 'in:ingreso,egreso'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'payment_method' => ['required', 'in:'.implode(',', array_keys(\App\Services\SaleService::PAYMENTS))],
+            'note' => ['required', 'string', 'max:200'],
+        ], [], ['amount' => 'monto', 'note' => 'motivo']);
+        $session->movements()->create(['user_id' => $request->user()->id, 'type' => $data['type'], 'payment_method' => $data['payment_method'],
+            'amount' => $data['type'] === 'egreso' ? -$data['amount'] : $data['amount'], 'note' => $data['note']]);
+
+        return back()->with('status', ($data['type'] === 'egreso' ? 'Gasto' : 'Ingreso').' registrado en la caja.');
+    }
+
     private function authorizeBranch(Request $request, int $branchId): void
     {
         $scoped = $request->user()->scopedBranchId();

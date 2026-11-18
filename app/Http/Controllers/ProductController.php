@@ -30,7 +30,7 @@ class ProductController extends Controller
         foreach ($product->variants as $v) {
             $c = $v->valueOf('color') ?? '—';
             $t = $v->valueOf('talla') ?? '—';
-            $qty = (int) ($v->stocks->first()->quantity ?? 0);
+            $qty = $v->stocks->first()?->available() ?? 0;
             $matrix[$c][$t] = ['id' => $v->id, 'sku' => $v->sku, 'stock' => $qty, 'price' => $v->effectivePrice()];
             if (! isset($colors[$c])) {
                 $colors[$c] = $v->attributeValues->firstWhere('attribute.slug', 'color')?->meta;
@@ -55,7 +55,7 @@ class ProductController extends Controller
         $related = Product::published()->inBranch($branch->id)->where('category_id', $product->category_id)
             ->whereKeyNot($product->id)->with('primaryImage')->withCount('likes')->inRandomOrder()->take(4)->get();
 
-        $totalStock = $product->variants->sum(fn ($v) => (int) ($v->stocks->first()->quantity ?? 0));
+        $totalStock = $product->variants->sum(fn ($v) => $v->stocks->first()?->available() ?? 0);
 
         return view('products.show', compact(
             'product', 'branch', 'matrix', 'colors', 'sizes', 'imagesByColor', 'liked', 'related', 'totalStock'

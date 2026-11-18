@@ -44,4 +44,57 @@
         @endcan
     </div>
 </div>
+
+{{-- Cambios y devoluciones --}}
+<div class="max-w-5xl mt-6 space-y-4">
+    @foreach($sale->returns as $ret)
+        <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm">
+            <p class="font-semibold">🔁 {{ $ret->type === 'cambio' ? 'Cambio' : 'Devolución' }} · {{ $ret->created_at->isoFormat('D MMM YYYY HH:mm') }} · {{ $ret->user->name }} @if($ret->reason)<span class="font-normal text-slate-500">— {{ $ret->reason }}</span>@endif</p>
+            <ul class="mt-2 space-y-0.5">
+                @foreach($ret->items as $it)
+                    <li>{{ $it->direction === 'in' ? '↩︎ Devolvió' : '↪︎ Se llevó' }} {{ $it->quantity }} × {{ $it->variant->product->name }} {{ $it->variant->label() }} ({{ money($it->unit_price) }})</li>
+                @endforeach
+            </ul>
+            <p class="mt-2 font-semibold {{ $ret->balance > 0 ? 'text-emerald-700' : ($ret->balance < 0 ? 'text-rose-700' : 'text-slate-600') }}">
+                {{ $ret->balance > 0 ? 'Cobró '.money($ret->balance).' de diferencia' : ($ret->balance < 0 ? 'Se devolvió '.money(-$ret->balance).' al cliente' : 'Sin diferencia de precio') }}
+                @if($ret->balance != 0)({{ \App\Services\SaleService::PAYMENTS[$ret->payment_method] ?? $ret->payment_method }})@endif</p>
+        </div>
+    @endforeach
+
+    @if($sale->status !== 'anulada' && auth()->user()->can('sales.create'))
+        <details class="bg-white rounded-xl border border-slate-200 p-5" @if($errors->has('exchange')) open @endif>
+            <summary class="cursor-pointer font-semibold">🔁 Cambio de talla o devolución</summary>
+            <form method="POST" action="{{ route('admin.ventas.cambio', $sale) }}" data-once class="mt-4 space-y-5">
+                @csrf
+                @error('exchange')<p class="text-sm text-rose-600">{{ $message }}</p>@enderror
+                <div>
+                    <p class="text-sm font-medium mb-2">1. ¿Qué devuelve el cliente?</p>
+                    <div class="space-y-2">
+                        @foreach($sale->items as $it)
+                            @php $left = $it->quantity - (int) ($returned[$it->id] ?? 0); @endphp
+                            <label class="flex flex-wrap items-center gap-3 text-sm {{ $left ? '' : 'opacity-50' }}">
+                                <input type="number" name="returns[{{ $it->id }}]" min="0" max="{{ $left }}" value="{{ old('returns.'.$it->id, 0) }}" @disabled(! $left) class="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-center">
+                                <span>de {{ $left }} · {{ $it->variant->product->name }} {{ $it->variant->label() }} ({{ money($it->unit_price) }} c/u)</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+                <div>
+                    <p class="text-sm font-medium mb-2">2. ¿Qué se lleva a cambio? <span class="font-normal text-slate-500">(déjalo vacío si solo devuelve)</span></p>
+                    @include('admin.partials.items-picker', ['name' => 'items', 'withPrice' => false, 'optional' => true, 'old' => old('items')])
+                </div>
+                <div class="grid sm:grid-cols-3 gap-3 items-end">
+                    <x-admin.field label="La diferencia se paga / devuelve en" name="payment_method">
+                        <select name="payment_method" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                            @foreach(\App\Services\SaleService::PAYMENTS as $k => $l)<option value="{{ $k }}">{{ $l }}</option>@endforeach
+                        </select>
+                    </x-admin.field>
+                    <x-admin.field label="Motivo" name="reason"><input name="reason" maxlength="200" placeholder="Ej.: le quedó chico" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></x-admin.field>
+                    <button class="bg-brand-900 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">Registrar cambio</button>
+                </div>
+                <p class="text-xs text-slate-500">Lo devuelto vuelve al stock, lo que se lleva sale del stock, y la diferencia de precio entra o sale de la caja abierta.</p>
+            </form>
+        </details>
+    @endif
+</div>
 @endsection

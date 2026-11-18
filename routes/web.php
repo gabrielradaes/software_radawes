@@ -97,6 +97,36 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('caja', [Admin\CashController::class, 'index'])->name('caja');
             Route::post('caja/abrir', [Admin\CashController::class, 'open'])->name('caja.abrir');
             Route::post('caja/{session}/cerrar', [Admin\CashController::class, 'close'])->name('caja.cerrar');
+            Route::post('caja/{session}/movimiento', [Admin\CashController::class, 'movement'])->name('caja.movimiento');
+            // Cambios de talla / devoluciones
+            Route::post('ventas/{sale}/cambio', [Admin\SaleController::class, 'exchange'])->name('ventas.cambio');
+            // Apartados con adelanto
+            Route::get('apartados', [Admin\ReservationController::class, 'index'])->name('apartados.index');
+            Route::get('apartados/nuevo', [Admin\ReservationController::class, 'create'])->name('apartados.create');
+            Route::post('apartados', [Admin\ReservationController::class, 'store'])->name('apartados.store');
+            Route::get('apartados/{reservation}', [Admin\ReservationController::class, 'show'])->whereNumber('reservation')->name('apartados.show');
+            Route::post('apartados/{reservation}/retirar', [Admin\ReservationController::class, 'pickUp'])->name('apartados.retirar');
+            Route::post('apartados/{reservation}/cancelar', [Admin\ReservationController::class, 'cancel'])->name('apartados.cancelar');
+        });
+        // Traspasos entre tiendas (envía el supervisor; cualquiera de la tienda de destino confirma)
+        Route::middleware('can:stock.view')->group(function () {
+            Route::get('traspasos', [Admin\TransferController::class, 'index'])->name('traspasos.index');
+            Route::get('traspasos/{transfer}', [Admin\TransferController::class, 'show'])->whereNumber('transfer')->name('traspasos.show');
+            Route::post('traspasos/{transfer}/recibir', [Admin\TransferController::class, 'receive'])->name('traspasos.recibir');
+            // Inventario físico: contar (todos); abrir, cerrar y cancelar (quien ajusta stock)
+            Route::get('inventario', [Admin\StockCountController::class, 'index'])->name('inventario.index');
+            Route::get('inventario/{count}', [Admin\StockCountController::class, 'show'])->whereNumber('count')->name('inventario.show');
+            Route::post('inventario/{count}/escanear', [Admin\StockCountController::class, 'scan'])->middleware('throttle:600,1')->name('inventario.escanear');
+        });
+        Route::middleware('can:stock.transfer')->group(function () {
+            Route::get('traspasos/nuevo', [Admin\TransferController::class, 'create'])->name('traspasos.create');
+            Route::post('traspasos', [Admin\TransferController::class, 'store'])->name('traspasos.store');
+            Route::post('traspasos/{transfer}/cancelar', [Admin\TransferController::class, 'cancel'])->name('traspasos.cancelar');
+        });
+        Route::middleware('can:stock.adjust')->group(function () {
+            Route::post('inventario', [Admin\StockCountController::class, 'store'])->name('inventario.store');
+            Route::post('inventario/{count}/cerrar', [Admin\StockCountController::class, 'close'])->name('inventario.cerrar');
+            Route::post('inventario/{count}/cancelar', [Admin\StockCountController::class, 'cancel'])->name('inventario.cancelar');
         });
         // Etiquetas con código de barras
         Route::get('etiquetas', [Admin\LabelController::class, 'index'])->middleware('can:stock.view')->name('etiquetas');

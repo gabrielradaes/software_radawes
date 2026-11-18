@@ -174,22 +174,14 @@ trait Admin
         $productColors = $product->variants->map(fn ($v) => $v->valueOf('color'))->filter()->unique()->values();
         $colors = $d['colors'] ?? ($productColors->count() === 1 ? [$productColors->first()] : []);
 
-        DB::transaction(function () use ($product, $d, $from, $to, $colors) {
-            $product->branches()->syncWithoutDetaching([$to->id => ['is_active' => true]]);
-            foreach ($this->matchVariants($product, $d['tallas'] ?? [], $colors) as $l) {
-                $src = Stock::where('product_variant_id', $l['variant']->id)->where('branch_id', $from->id)->lockForUpdate()->firstOrFail();
-                if ($src->quantity < $d['qty']) {
-                    throw new \RuntimeException("No alcanza el stock de {$l['label']} en {$from->name}.");
-                }
-                $dst = Stock::firstOrCreate(['product_variant_id' => $l['variant']->id, 'branch_id' => $to->id], ['quantity' => 0, 'min_quantity' => 1]);
-                $src->move('traspaso', -$d['qty'], $this->user->id, 'Traspaso a '.$to->name);
-                $dst->move('traspaso', $d['qty'], $this->user->id, 'Traspaso desde '.$from->name);
-            }
-        });
+        // Traspaso en 2 pasos: sale ahora del origen y entra cuando la otra tienda confirma la recepción
+        $lines = collect($this->matchVariants($product, $d['tallas'] ?? [], $colors))
+            ->map(fn ($l) => ['variant' => $l['variant'] ?? throw new \RuntimeException("No existe {$l['label']}."), 'quantity' => $d['qty']])->all();
+        $tr = \App\Services\OpsService::sendTransfer($this->user, $from, $to, $lines, 'Desde el asistente');
         $this->state = [];
 
-        return $this->reply("✅ Traspaso hecho: {$d['qty']} par(es) de *{$product->name}* de ".self::short($from).' a '.self::short($to).'.',
-            links: [['Ver stock', route('admin.stock.index', ['q' => $product->code ?? $product->name])]], meta: ['action' => 'traspaso', 'product_id' => $product->id]);
+        return $this->reply("✅ Enviado {$tr->code}: {$tr->pairs} par(es) de *{$product->name}* van en camino de ".self::short($from).' a '.self::short($to).'. Entran a su stock cuando '.self::short($to).' confirme que los recibió.',
+            links: [['Ver traspaso', route('admin.traspasos.show', $tr)]], meta: ['action' => 'traspaso', 'product_id' => $product->id, 'transfer_id' => $tr->id]);
     }
 
     // =================================================================== nueva clase de calzado

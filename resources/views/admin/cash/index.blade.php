@@ -37,7 +37,29 @@
                         <div class="bg-slate-50 rounded-lg p-3"><p class="text-xs text-slate-500">{{ $label }} <span class="text-slate-400">({{ $totals[$k]['count'] ?? 0 }})</span></p><p class="font-bold">{{ money($totals[$k]['total'] ?? 0) }}</p></div>
                     @endforeach
                 </div>
-                <p class="mt-4 text-sm">Total vendido en el turno: <strong>{{ money(collect($totals)->sum('total')) }}</strong> · Efectivo que debería haber en caja: <strong class="text-lg">{{ money($expected) }}</strong></p>
+                <p class="mt-4 text-sm">Movimiento neto del turno: <strong>{{ money(collect($totals)->sum('total')) }}</strong> · Efectivo que debería haber en caja: <strong class="text-lg">{{ money($expected) }}</strong></p>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200">
+                <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap justify-between gap-2 items-center">
+                    <span class="font-semibold">Movimientos del turno</span>
+                    <form method="POST" action="{{ route('admin.caja.movimiento', $open) }}" data-once class="flex flex-wrap gap-2 items-center text-sm">
+                        @csrf
+                        <select name="type" class="rounded-lg border border-slate-300 px-2 py-1.5"><option value="egreso">− Gasto / retiro</option><option value="ingreso">+ Ingreso</option></select>
+                        <input type="number" step="0.01" min="0.01" name="amount" required placeholder="Bs" class="w-24 rounded-lg border border-slate-300 px-2 py-1.5">
+                        <select name="payment_method" class="rounded-lg border border-slate-300 px-2 py-1.5">@foreach(\App\Services\SaleService::PAYMENTS as $k => $l)<option value="{{ $k }}">{{ $l }}</option>@endforeach</select>
+                        <input name="note" required maxlength="200" placeholder="Motivo (ej.: pasaje)" class="w-40 rounded-lg border border-slate-300 px-2 py-1.5">
+                        <button class="bg-slate-800 text-white font-semibold px-3 py-1.5 rounded-lg">Registrar</button>
+                    </form>
+                </div>
+                <ul class="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                    @forelse($open->movements()->with('user')->get() as $m)
+                        <li class="px-5 py-2 text-sm flex justify-between gap-3">
+                            <span>{{ \App\Models\CashMovement::TYPES[$m->type] ?? $m->type }} <span class="text-xs text-slate-400">· {{ $m->created_at->format('H:i') }} · {{ \App\Services\SaleService::PAYMENTS[$m->payment_method] ?? $m->payment_method }} · {{ $m->note }}</span></span>
+                            <span class="font-semibold whitespace-nowrap {{ $m->amount < 0 ? 'text-rose-600' : 'text-emerald-700' }}">{{ $m->amount < 0 ? '−' : '+' }} {{ money(abs($m->amount)) }}</span>
+                        </li>
+                    @empty<li class="px-5 py-4 text-sm text-slate-400">Sin movimientos todavía.</li>@endforelse
+                </ul>
             </div>
 
             <form method="POST" action="{{ route('admin.caja.cerrar', $open) }}" data-once x-data="{ counted: '' }" class="bg-white rounded-xl border border-slate-200 p-6 space-y-4 max-w-md">

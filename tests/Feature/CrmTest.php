@@ -260,6 +260,11 @@ class CrmTest extends TestCase
         $this->assertTrue($r['confirm'], $r['text']);
         $this->decir($admin, 'sí');
         $this->assertSame(3, $this->stock($p, '40', 'Negro'));
+        // En 2 pasos: en camino hasta que El Alto confirma
+        $this->assertSame(0, $this->stock($p, '40', 'Negro', 'el-alto'));
+        $tr = \App\Models\Transfer::firstOrFail();
+        $this->assertSame('enviado', $tr->status);
+        $this->actingAs($this->vendedor('el-alto'))->post("/admin/traspasos/{$tr->id}/recibir")->assertRedirect();
         $this->assertSame(2, $this->stock($p, '40', 'Negro', 'el-alto'));
 
         $this->decir($admin, 'nueva clase Pantuflas');

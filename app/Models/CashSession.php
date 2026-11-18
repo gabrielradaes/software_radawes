@@ -37,15 +37,21 @@ class CashSession extends Model
         return $this->hasMany(Sale::class);
     }
 
+    public function movements(): HasMany
+    {
+        return $this->hasMany(CashMovement::class)->latest('id');
+    }
+
     public static function openFor(int $branchId): ?self
     {
         return static::where('branch_id', $branchId)->whereNull('closed_at')->latest('id')->first();
     }
 
-    /** Ventas pagadas del turno por forma de pago: ['efectivo' => 900.0, 'qr' => 450.0, …] */
+    /** Dinero neto del turno por forma de pago (ventas, adelantos, cambios, gastos…): ['efectivo' => ['total' => 900.0, 'count' => 2], …] */
     public function totalsByPayment(): array
     {
-        return $this->sales()->where('status', 'pagada')->selectRaw('payment_method, SUM(total) as t, COUNT(*) as n')
+        return CashMovement::where('cash_session_id', $this->id)
+            ->selectRaw("payment_method, SUM(amount) as t, SUM(CASE WHEN type = 'venta' THEN 1 ELSE 0 END) as n")
             ->groupBy('payment_method')->get()->mapWithKeys(fn ($r) => [$r->payment_method => ['total' => (float) $r->t, 'count' => (int) $r->n]])->all();
     }
 

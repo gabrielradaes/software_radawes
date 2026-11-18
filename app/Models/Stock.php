@@ -8,7 +8,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Stock extends Model
 {
-    protected $fillable = ['product_variant_id', 'branch_id', 'quantity', 'min_quantity'];
+    protected $fillable = ['product_variant_id', 'branch_id', 'quantity', 'reserved', 'min_quantity'];
+
+    /** Pares que se pueden vender: los que hay menos los apartados. */
+    public function available(): int
+    {
+        return max(0, (int) $this->quantity - (int) $this->reserved);
+    }
 
     public function variant(): BelongsTo
     {
