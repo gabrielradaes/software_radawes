@@ -44,7 +44,7 @@ class Stock extends Model
         $this->quantity += $quantity;
         $this->save();
 
-        return $this->movements()->create([
+        $movement = $this->movements()->create([
             'user_id' => $userId,
             'type' => $type,
             'quantity' => $quantity,
@@ -53,5 +53,12 @@ class Stock extends Model
             'reference_type' => $reference ? $reference::class : null,
             'reference_id' => $reference?->getKey(),
         ]);
+
+        // Si entró mercadería, avisar a los clientes que esperaban esta talla
+        if ($quantity > 0) {
+            RestockRequest::stockArrived($this);
+        }
+
+        return $movement;
     }
 }

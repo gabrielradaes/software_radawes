@@ -118,6 +118,50 @@
                 </template>
             </div>
 
+            {{-- Guía de tallas y "avísame" --}}
+            @if($hasSizes)
+                <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm" x-data="{ guia: false, aviso: @js((bool) $errors->any()) }">
+                    <button type="button" @click="guia = true" class="text-brand-700 underline underline-offset-2 hover:text-brand-900">📏 Guía de tallas</button>
+                    <button type="button" @click="aviso = !aviso" class="text-brand-700 underline underline-offset-2 hover:text-brand-900">🔔 ¿No está tu talla? Avísame cuando llegue</button>
+
+                    <div x-show="guia" x-cloak @keydown.escape.window="guia = false" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" @click.self="guia = false">
+                        <div class="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+                            <div class="flex justify-between items-start"><h3 class="font-display text-xl font-bold">Guía de tallas</h3><button type="button" @click="guia = false" class="text-2xl leading-none text-brand-400">×</button></div>
+                            <p class="text-sm text-brand-600 mt-2"><strong>Cómo medir:</strong> apoya el pie descalzo sobre una hoja contra la pared, marca la punta del dedo más largo y mide en centímetros. Si estás entre dos tallas, elige la más grande.</p>
+                            <table class="w-full text-sm mt-4">
+                                <thead><tr class="text-left text-xs uppercase text-brand-500 border-b border-brand-100"><th class="py-2">Talla (BR)</th><th>Equivale (EU)</th><th class="text-right">Largo del pie</th></tr></thead>
+                                <tbody class="divide-y divide-brand-50">
+                                    @foreach(['33' => 22.0, '34' => 22.7, '35' => 23.3, '36' => 24.0, '37' => 24.7, '38' => 25.3, '39' => 26.0, '40' => 26.7, '41' => 27.3, '42' => 28.0, '43' => 28.7, '44' => 29.3, '45' => 30.0] as $br => $cm)
+                                        <tr class="{{ in_array($br, $sizes, true) ? '' : 'text-brand-300' }}"><td class="py-1.5 font-semibold">{{ $br }}</td><td>{{ (int) $br + 1 }}</td><td class="text-right">{{ number_format($cm, 1, ',', '') }} cm</td></tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            <p class="text-xs text-brand-400 mt-3">Medidas aproximadas. ¿Dudas? Escríbenos por WhatsApp y te ayudamos a elegir.</p>
+                        </div>
+                    </div>
+
+                    @if(session('restock'))
+                        <p class="w-full text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">{{ session('restock') }}</p>
+                    @endif
+                    <form x-show="aviso" x-cloak method="POST" action="{{ route('products.restock', ['product' => $product->slug]) }}" class="w-full bg-brand-50 border border-brand-100 rounded-2xl p-4 grid sm:grid-cols-2 gap-3">
+                        @csrf
+                        <p class="sm:col-span-2 text-brand-700">Te escribimos por WhatsApp apenas llegue a {{ $branch->name }}.</p>
+                        <input name="name" required maxlength="150" value="{{ old('name', auth('customer')->user()?->name) }}" placeholder="Tu nombre" class="rounded-xl border border-brand-200 px-3 py-2">
+                        <input name="phone" required inputmode="tel" value="{{ old('phone', auth('customer')->user()?->phone) }}" placeholder="Celular (ej.: 70011222)" class="rounded-xl border border-brand-200 px-3 py-2">
+                        <select name="size" class="rounded-xl border border-brand-200 px-3 py-2" x-init="$el.value = size || ''" x-effect="size && ($el.value = size)">
+                            <option value="">Talla…</option>
+                            @foreach(range(33, 45) as $s)<option value="{{ $s }}">{{ $s }}</option>@endforeach
+                        </select>
+                        <select name="color" class="rounded-xl border border-brand-200 px-3 py-2" x-effect="color && ($el.value = color)">
+                            <option value="">Cualquier color</option>
+                            @foreach(array_keys($colors) as $c)@if($c !== '—')<option value="{{ $c }}">{{ $c }}</option>@endif @endforeach
+                        </select>
+                        @if($errors->any())<p class="sm:col-span-2 text-rose-600 text-xs">{{ $errors->first() }}</p>@endif
+                        <button class="sm:col-span-2 bg-brand-900 hover:bg-brand-700 text-white font-semibold px-4 py-2.5 rounded-full">Avísame</button>
+                    </form>
+                </div>
+            @endif
+
             {{-- CTA --}}
             <div class="mt-7 flex flex-col sm:flex-row gap-3">
                 <a :href="waUrl()" target="_blank" rel="noopener" class="flex-1 inline-flex items-center justify-center gap-2 bg-wa-500 hover:bg-wa-600 text-white font-semibold px-6 py-3.5 rounded-full text-base transition shadow-lg shadow-wa-500/30">

@@ -31,8 +31,10 @@ class CrmController extends Controller
         $top = Customer::withSum(['sales as spent' => fn ($q) => $q->where('status', 'pagada')], 'total')
             ->having('spent', '>', 0)->orderByDesc('spent')->limit(8)->get();
         $staff = $this->staff($user);
+        $waiting = \App\Models\RestockRequest::with('customer', 'product', 'branch')->whereNull('notified_at')
+            ->when($user->scopedBranchId(), fn ($q, $b) => $q->where('branch_id', $b))->latest()->limit(15)->get();
 
-        return view('admin.crm.index', compact('groups', 'pipeline', 'inactive', 'recent', 'top', 'staff'));
+        return view('admin.crm.index', compact('groups', 'pipeline', 'inactive', 'recent', 'top', 'staff', 'waiting'));
     }
 
     public function storeTask(Request $request)

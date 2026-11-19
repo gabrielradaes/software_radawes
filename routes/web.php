@@ -194,6 +194,8 @@ Route::get('/', LandingController::class)->name('landing');
 
 // Para Google: mapa del sitio
 Route::get('/sitemap.xml', \App\Http\Controllers\SitemapController::class)->name('sitemap');
+// Catálogo para Facebook/Instagram (Meta) y Google Merchant Center
+Route::get('/catalogo.xml', [\App\Http\Controllers\CatalogFeedController::class, 'catalog'])->name('feed.catalog');
 
 // Llamado por GitHub Actions tras subir una versión nueva (ver .github/workflows/deploy.yml)
 Route::post('/_deploy', \App\Http\Controllers\DeployController::class)->name('deploy');
@@ -207,6 +209,7 @@ Route::prefix('{branch}')->middleware(SetBranchFromRoute::class)->group(function
     Route::get('/catalogo', [CatalogController::class, 'index'])->name('catalog.index');
     Route::get('/catalogo/{category}', [CatalogController::class, 'category'])->name('catalog.category');
     Route::get('/producto/{product}', [ProductController::class, 'show'])->name('products.show');
+    Route::post('/producto/{product}/avisame', [\App\Http\Controllers\RestockController::class, 'store'])->middleware('throttle:10,1')->name('products.restock');
 
     Route::get('/novedades', [FeedController::class, 'index'])->name('feed.index');
     Route::get('/novedades/{post}', [FeedController::class, 'show'])->name('feed.show');

@@ -159,7 +159,7 @@ class OpsService
             CustomerTask::create(['customer_id' => $customer->id, 'user_id' => $user->id, 'created_by' => $user->id, 'branch_id' => $branch->id,
                 'title' => "Recordar que retire su apartado {$res->code} (saldo ".money($total - $deposit).')', 'due_at' => $due->isPast() ? now()->addHour() : $due]);
             $customer->interactions()->create(['user_id' => $user->id, 'type' => 'visita', 'body' => "📌 Apartó {$res->code} por ".money($total).' con adelanto de '.money($deposit)]);
-            if ($customer->stage === 'prospecto') {
+            if (($customer->stage ?? 'prospecto') === 'prospecto') {
                 $customer->update(['stage' => 'interesado']);
             }
 

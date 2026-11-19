@@ -57,6 +57,15 @@
 
     <div class="space-y-6">
         <div class="bg-white rounded-xl border border-slate-200">
+            <div class="px-5 py-3 border-b border-slate-100 font-semibold">🔔 Esperan su talla ({{ $waiting->count() }})</div>
+            <ul class="divide-y divide-slate-100">
+                @forelse($waiting as $w)
+                    <li class="px-5 py-2.5 text-sm"><a href="{{ route('admin.clientes.show', $w->customer) }}" class="font-medium hover:underline">{{ $w->customer->name }}</a> <span class="text-xs text-slate-400">· {{ $w->created_at->diffForHumans() }}</span>
+                        <p class="text-slate-600">{{ $w->label() }} <span class="text-xs text-slate-400">({{ $w->branch->name }})</span></p></li>
+                @empty<li class="px-5 py-4 text-sm text-slate-400">Nadie esperando. Cuando un cliente pida aviso en la página aparecerá aquí, y al llegar el stock se crea el seguimiento solo.</li>@endforelse
+            </ul>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200">
             <div class="px-5 py-3 border-b border-slate-100 font-semibold">🏆 Mejores clientes</div>
             <ul class="divide-y divide-slate-100">
                 @forelse($top as $c)

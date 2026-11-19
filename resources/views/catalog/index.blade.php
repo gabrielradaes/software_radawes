@@ -50,6 +50,32 @@
                     @endforeach
                 </ul>
             </div>
+            @if($sizes->isNotEmpty())
+                <div class="bg-white rounded-2xl border border-brand-100 p-5">
+                    <div class="flex justify-between items-baseline mb-3"><p class="font-semibold">Tu talla</p>
+                        @if($talla)<a href="{{ request()->fullUrlWithQuery(['talla' => null, 'page' => null]) }}" class="text-xs text-brand-500 hover:underline">quitar</a>@endif</div>
+                    <div class="grid grid-cols-4 gap-1.5">
+                        @foreach($sizes as $s)
+                            <a href="{{ request()->fullUrlWithQuery(['talla' => $talla === $s ? null : $s, 'page' => null]) }}"
+                               class="text-center text-sm py-1.5 rounded-lg border transition {{ $talla === $s ? 'bg-brand-900 border-brand-900 text-white font-semibold' : 'border-brand-200 hover:border-brand-500' }}">{{ $s }}</a>
+                        @endforeach
+                    </div>
+                    <p class="text-[11px] text-brand-500 mt-2">Solo tallas con pares disponibles en esta tienda.</p>
+                </div>
+            @endif
+            @if($colors->isNotEmpty())
+                <div class="bg-white rounded-2xl border border-brand-100 p-5">
+                    <div class="flex justify-between items-baseline mb-3"><p class="font-semibold">Color</p>
+                        @if($color)<a href="{{ request()->fullUrlWithQuery(['color' => null, 'page' => null]) }}" class="text-xs text-brand-500 hover:underline">quitar</a>@endif</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach($colors as $c)
+                            <a href="{{ request()->fullUrlWithQuery(['color' => $color === $c['name'] ? null : $c['name'], 'page' => null]) }}"
+                               class="inline-flex items-center gap-1.5 text-sm px-2.5 py-1 rounded-full border transition {{ $color === $c['name'] ? 'bg-brand-900 border-brand-900 text-white' : 'border-brand-200 hover:border-brand-500' }}">
+                                <span class="w-3.5 h-3.5 rounded-full border border-black/10" style="background: {{ $c['hex'] ?: '#ccc' }}"></span>{{ $c['name'] }}</a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
             <a href="{{ request()->fullUrlWithQuery(['oferta' => request()->boolean('oferta') ? null : 1, 'page' => null]) }}"
                class="block rounded-2xl border p-4 text-sm font-semibold text-center transition {{ request()->boolean('oferta') ? 'bg-rose-600 border-rose-600 text-white' : 'bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100' }}">
                 🔥 Solo ofertas

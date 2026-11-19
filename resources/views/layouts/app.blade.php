@@ -83,7 +83,7 @@
         </nav>
 
         <div class="flex items-center gap-2">
-            <form action="{{ route('catalog.index') }}" method="GET" class="hidden md:flex items-center">
+            <form action="{{ route('catalog.index') }}" method="GET" class="hidden md:flex lg:hidden xl:flex items-center">
                 <div class="relative">
                     <input type="search" name="q" value="{{ request('q') }}" placeholder="Buscar modelo..." class="w-44 lg:w-52 rounded-full border border-brand-200 bg-brand-50 pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 focus:bg-white">
                     <svg class="w-4 h-4 absolute left-3 top-2 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/></svg>
@@ -108,7 +108,7 @@
             @else
                 <a href="{{ route('customer.login') }}" class="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-brand-900 hover:text-brand-500 px-2" title="Iniciar sesión">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                    Ingresar
+                    <span class="lg:hidden xl:inline">Ingresar</span>
                 </a>
             @endif
             <button @click="open = !open" class="lg:hidden p-2 rounded-lg hover:bg-brand-50" aria-label="Menú">

@@ -103,7 +103,8 @@
             <p class="text-gold-600 text-xs uppercase tracking-[0.2em] font-semibold">Visítanos</p>
             <h2 class="font-display text-3xl md:text-4xl font-bold mt-2">{{ $branch->name }}</h2>
             <ul class="mt-6 space-y-3 text-brand-700">
-                <li class="flex gap-3"><span>📍</span><span>{{ $branch->address }}<br>{{ $branch->city }}, {{ $branch->country }}</span></li>
+                <li class="flex gap-3"><span>📍</span><span>{{ $branch->address }}<br>{{ $branch->city }}, {{ $branch->country }}
+                    <br><a href="https://www.google.com/maps/dir/?api=1&destination={{ $branch->latitude && $branch->longitude ? $branch->latitude.','.$branch->longitude : urlencode(trim($branch->address.', '.$branch->city.', '.$branch->country, ', ')) }}" target="_blank" rel="noopener" class="inline-block mt-1.5 text-sm font-semibold text-brand-900 underline underline-offset-2">🧭 Cómo llegar</a></span></li>
                 @if($branch->opening_hours)<li class="flex gap-3"><span>🕘</span><span>{{ $branch->opening_hours }}</span></li>@endif
                 <li class="flex gap-3"><span>📱</span><a href="{{ route('whatsapp', ['origen' => 'ubicacion']) }}" target="_blank" rel="noopener" class="text-wa-600 font-semibold hover:text-brand-900">+{{ $branch->whatsapp }}</a></li>
             </ul>
