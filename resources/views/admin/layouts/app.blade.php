@@ -21,6 +21,7 @@
         ['Comentarios', route('admin.comentarios.index'), 'admin.comentarios.*', 'comments.moderate', '💬'],
         ['Leads WhatsApp', route('admin.leads.index'), 'admin.leads.*', 'leads.manage', '🟢'],
         ['Ventas', route('admin.ventas.index'), 'admin.ventas.*', 'sales.view', '🧾'],
+        ['Pronóstico', route('admin.pronostico'), 'admin.pronostico', 'reports.view', '📈'],
         ['Caja', route('admin.caja'), 'admin.caja*', 'sales.create', '💵'],
         ['Apartados', route('admin.apartados.index'), 'admin.apartados.*', 'sales.create', '📌'],
         ['Traspasos', route('admin.traspasos.index'), 'admin.traspasos.*', 'stock.view', '🔁'],
@@ -37,7 +38,8 @@
 
 <div class="min-h-screen lg:flex">
     {{-- Sidebar --}}
-    <aside class="fixed inset-y-0 left-0 z-40 w-64 bg-brand-950 text-brand-100 transform transition lg:translate-x-0 lg:static lg:shrink-0" :class="side ? 'translate-x-0' : '-translate-x-full'">
+    {{-- Cerrado desde el primer instante en el celular (sin parpadeo antes de que cargue Alpine) --}}
+    <aside class="fixed inset-y-0 left-0 z-40 w-64 bg-brand-950 text-brand-100 transform transition -translate-x-full lg:translate-x-0 lg:static lg:shrink-0" :class="side && '!translate-x-0'">
         <div class="h-16 flex items-center gap-3 px-5 border-b border-brand-900">
             <span class="w-9 h-9 rounded-full bg-brand-900 text-gold-400 font-bold flex items-center justify-center ring-2 ring-gold-500/40">RW</span>
             <div class="leading-tight">

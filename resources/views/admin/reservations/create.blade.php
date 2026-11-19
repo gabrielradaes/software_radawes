@@ -14,10 +14,10 @@
 <form method="POST" action="{{ route('admin.apartados.store') }}" data-once class="grid lg:grid-cols-3 gap-6">
     @csrf
     <input type="hidden" name="branch_id" value="{{ $branch->id }}">
-    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 space-y-3">
+    <div class="lg:col-span-2 min-w-0 bg-white rounded-xl border border-slate-200 p-6 space-y-3">
         <h3 class="font-semibold">Pares que aparta · {{ $branch->name }}</h3>
         @error('items')<p class="text-sm text-rose-600">{{ $message }}</p>@enderror
-        @include('admin.partials.items-picker', ['name' => 'items', 'withPrice' => true, 'old' => old('items')])
+        @include('admin.partials.items-picker', ['name' => 'items', 'branchId' => $branch->id, 'withPrice' => true, 'old' => old('items')])
     </div>
     <div class="space-y-6">
         <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
@@ -37,7 +37,7 @@
             <x-admin.field label="Retira hasta" name="expires_at"><input type="date" name="expires_at" required min="{{ today()->toDateString() }}" value="{{ old('expires_at', today()->addDays(7)->toDateString()) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></x-admin.field>
             <x-admin.field label="Notas" name="notes"><input name="notes" value="{{ old('notes') }}" maxlength="500" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></x-admin.field>
             <p class="text-xs text-slate-500">Los pares quedan <strong>reservados</strong>: no se pueden vender a otro cliente. Un día antes de la fecha límite aparece un seguimiento en el CRM para recordarle.</p>
-            <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-3 rounded-lg" @disabled($variants->isEmpty())>Registrar apartado</button>
+            <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-3 rounded-lg">Registrar apartado</button>
         </div>
     </div>
 </form>

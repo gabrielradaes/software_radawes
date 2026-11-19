@@ -27,19 +27,8 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
-        // Tienda por defecto para rutas públicas fuera de /{branch} (panel admin, correos…)
-        if (! $this->app->runningInConsole()) {
-            try {
-                $slug = Branch::active()->where('is_main', true)->value('slug') ?? Branch::active()->value('slug');
-                if ($slug) {
-                    \Illuminate\Support\Facades\URL::defaults(['branch' => $slug]);
-                }
-            } catch (\Throwable) {
-                // sin BD todavía (instalación)
-            }
-        }
+        // La tienda por defecto de los enlaces se fija en el middleware ResolveBranchDomain (con caché)
 
-        // Autorización por permisos de rol: @can('stock.view'), middleware can:..., $user->can(...)
         // Copia de seguridad diaria sin cron: la primera visita del día al panel la crea después de responder
         if (! $this->app->runningInConsole()) {
             $this->app->terminating(function () {
@@ -49,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
+        // Autorización por permisos de rol: @can('stock.view'), middleware can:..., $user->can(...)
         Gate::before(function (User $user, string $ability) {
             if (! $user->is_active) {
                 return false;

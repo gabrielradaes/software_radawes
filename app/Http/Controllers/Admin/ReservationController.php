@@ -41,7 +41,6 @@ class ReservationController extends Controller
 
         return view('admin.reservations.create', [
             'branches' => $branches, 'branch' => $branch, 'scoped' => $scoped,
-            'variants' => VariantOptions::forBranch($branch->id),
             'customer' => $request->filled('cliente') ? Customer::find($request->cliente) : null,
         ]);
     }

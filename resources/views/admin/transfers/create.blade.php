@@ -14,10 +14,10 @@
 <form method="POST" action="{{ route('admin.traspasos.store') }}" data-once class="grid lg:grid-cols-3 gap-6">
     @csrf
     <input type="hidden" name="from_branch_id" value="{{ $from->id }}">
-    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 space-y-3">
+    <div class="lg:col-span-2 min-w-0 bg-white rounded-xl border border-slate-200 p-6 space-y-3">
         <h3 class="font-semibold">Pares que salen de {{ $from->name }}</h3>
         @error('items')<p class="text-sm text-rose-600">{{ $message }}</p>@enderror
-        @include('admin.partials.items-picker', ['name' => 'items', 'withPrice' => false, 'old' => old('items')])
+        @include('admin.partials.items-picker', ['name' => 'items', 'branchId' => $from->id, 'withPrice' => false, 'old' => old('items')])
     </div>
     <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-3 h-fit">
         <x-admin.field label="Tienda que recibe" name="to_branch_id">
@@ -26,7 +26,7 @@
             </select>
         </x-admin.field>
         <x-admin.field label="Notas" name="notes"><input name="notes" value="{{ old('notes') }}" maxlength="255" placeholder="Ej.: va con el micro de las 3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></x-admin.field>
-        <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-3 rounded-lg" @disabled($variants->isEmpty())>Enviar</button>
+        <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-3 rounded-lg">Enviar</button>
     </div>
 </form>
 @endsection

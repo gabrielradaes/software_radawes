@@ -20,7 +20,7 @@
         <tbody class="divide-y divide-slate-100">
             @forelse($reservations as $r)
                 <tr class="hover:bg-slate-50 {{ $r->status !== 'activo' ? 'opacity-60' : '' }}">
-                    <td class="px-4 py-3"><a href="{{ route('admin.apartados.show', $r) }}" class="font-semibold hover:text-brand-500">{{ $r->code }}</a><p class="text-xs text-slate-400">{{ $r->branch->name }} · {{ ucfirst($r->status) }}</p></td>
+                    <td class="px-4 py-3"><a href="{{ route('admin.apartados.show', $r) }}" class="font-semibold hover:text-brand-500">{{ $r->code }}</a> @if($r->source === 'web')<span class="text-[11px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-800">🌐 desde la página</span>@endif<p class="text-xs text-slate-400">{{ $r->branch->name }} · {{ ucfirst($r->status) }}</p></td>
                     <td class="px-4 py-3"><a href="{{ route('admin.clientes.show', $r->customer) }}" class="hover:underline">{{ $r->customer->name }}</a><p class="text-xs text-slate-400">{{ $r->customer->phone }}</p></td>
                     <td class="px-4 py-3 text-center">{{ $r->items->sum('quantity') }}</td>
                     <td class="px-4 py-3 text-right">{{ money($r->total) }}</td>

@@ -74,6 +74,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::middleware('can:customers.view')->group(function () {
             Route::get('clientes', [Admin\CustomerController::class, 'index'])->name('clientes.index');
             Route::get('clientes/nuevo', [Admin\CustomerController::class, 'create'])->name('clientes.create');
+            Route::get('clientes/buscar', [Admin\CustomerController::class, 'lookup'])->name('clientes.buscar');
             Route::post('clientes', [Admin\CustomerController::class, 'store'])->name('clientes.store');
             Route::get('clientes/{customer}', [Admin\CustomerController::class, 'show'])->name('clientes.show');
 
@@ -146,6 +147,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Inventario
         Route::middleware('can:stock.view')->group(function () {
+            Route::get('stock/buscar', [Admin\StockLookupController::class, 'search'])->middleware('throttle:300,1')->name('stock.buscar');
+            Route::get('stock/modelo/{product:id}', [Admin\StockLookupController::class, 'model'])->middleware('throttle:300,1')->name('stock.modelo');
+            Route::get('stock/sku', [Admin\StockLookupController::class, 'sku'])->middleware('throttle:300,1')->name('stock.sku');
             Route::get('stock', [Admin\StockController::class, 'index'])->name('stock.index');
             Route::get('stock/global', [Admin\StockController::class, 'global'])->name('stock.global');
             Route::get('stock/{stock}/kardex', [Admin\StockController::class, 'kardex'])->name('stock.kardex');
@@ -173,6 +177,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('curvas', [Admin\PurchaseController::class, 'storeCurve'])->name('curvas.store');
             Route::delete('curvas/{curve}', [Admin\PurchaseController::class, 'destroyCurve'])->name('curvas.destroy');
         });
+
+        // Pronóstico de ventas por temporada
+        Route::get('pronostico', [Admin\ForecastController::class, 'index'])->middleware('can:reports.view')->name('pronostico');
 
         // Solo administradores: copias de seguridad y auditoría
         Route::middleware('can:users.manage')->group(function () {
@@ -209,6 +216,7 @@ Route::prefix('{branch}')->middleware(SetBranchFromRoute::class)->group(function
     Route::get('/catalogo', [CatalogController::class, 'index'])->name('catalog.index');
     Route::get('/catalogo/{category}', [CatalogController::class, 'category'])->name('catalog.category');
     Route::get('/producto/{product}', [ProductController::class, 'show'])->name('products.show');
+    Route::post('/producto/{product}/separar', [\App\Http\Controllers\WebOrderController::class, 'store'])->middleware('throttle:6,1')->name('products.reserve');
     Route::post('/producto/{product}/avisame', [\App\Http\Controllers\RestockController::class, 'store'])->middleware('throttle:10,1')->name('products.restock');
 
     Route::get('/novedades', [FeedController::class, 'index'])->name('feed.index');

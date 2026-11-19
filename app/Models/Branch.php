@@ -9,11 +9,18 @@ class Branch extends Model
 {
     use Concerns\Audited;
 
+    protected static function booted(): void
+    {
+        // La tienda por defecto de los enlaces se guarda en caché: renovarla si cambian las sucursales
+        static::saved(fn () => \Illuminate\Support\Facades\Cache::forget('branch:default-slug'));
+        static::deleted(fn () => \Illuminate\Support\Facades\Cache::forget('branch:default-slug'));
+    }
+
     protected array $audited = ['name' => 'Nombre', 'whatsapp' => 'WhatsApp', 'domain' => 'Dominio', 'address' => 'Dirección', 'is_active' => 'Activa', 'color_primary' => 'Color'];
 
     protected $fillable = [
         'name', 'slug', 'domain', 'brand_name', 'brand_tagline', 'brand_small', 'tagline', 'description', 'city', 'country', 'address',
-        'phone', 'whatsapp', 'email', 'opening_hours', 'latitude', 'longitude',
+        'phone', 'whatsapp', 'email', 'opening_hours', 'web_stock_buffer', 'latitude', 'longitude',
         'logo_path', 'cover_path', 'color_primary', 'color_accent', 'color_surface', 'is_main', 'is_active',
     ];
 

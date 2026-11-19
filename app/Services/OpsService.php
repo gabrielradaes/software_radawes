@@ -127,15 +127,15 @@ class OpsService
     // =================================================================== apartados
 
     /** @param array<int, array{variant: ProductVariant, quantity: int, unit_price?: ?float}> $lines */
-    public static function reserve(User $user, Branch $branch, Customer $customer, array $lines, float $deposit, string $method, Carbon|string $expires, ?string $notes = null): Reservation
+    public static function reserve(User $user, Branch $branch, Customer $customer, array $lines, float $deposit, string $method, Carbon|string $expires, ?string $notes = null, string $source = 'tienda'): Reservation
     {
         if (! $lines) {
             throw new RuntimeException('Agrega al menos un par.');
         }
 
-        return DB::transaction(function () use ($user, $branch, $customer, $lines, $deposit, $method, $expires, $notes) {
+        return DB::transaction(function () use ($user, $branch, $customer, $lines, $deposit, $method, $expires, $notes, $source) {
             $res = Reservation::create(['code' => Reservation::nextCode($branch), 'branch_id' => $branch->id, 'customer_id' => $customer->id,
-                'user_id' => $user->id, 'total' => 0, 'deposit' => $deposit, 'deposit_method' => $method, 'expires_at' => Carbon::parse($expires), 'notes' => $notes]);
+                'user_id' => $user->id, 'total' => 0, 'deposit' => $deposit, 'deposit_method' => $method, 'expires_at' => Carbon::parse($expires), 'notes' => $notes, 'source' => $source]);
             $total = 0;
             foreach ($lines as $l) {
                 $qty = max(1, (int) $l['quantity']);

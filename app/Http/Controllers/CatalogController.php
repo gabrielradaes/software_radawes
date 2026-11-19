@@ -38,23 +38,31 @@ class CatalogController extends Controller
             $query->whereIn('category_id', $category->descendantIds());
         }
 
-        // Talla y color: solo productos que tengan ese par disponible en esta tienda
-        $withValue = fn ($q, string $slug, string $value) => $q->whereHas('attributeValues', fn ($a) => $a->where('value', $value)->whereHas('attribute', fn ($x) => $x->where('slug', $slug)));
+        // Pares disponibles en esta tienda (una sola consulta con JOIN: rápida aunque haya decenas de miles de filas de stock)
+        $inStock = fn () => \Illuminate\Support\Facades\DB::table('stocks')
+            ->join('product_variants as pv', 'pv.id', '=', 'stocks.product_variant_id')
+            ->where('stocks.branch_id', $branchId)->whereRaw('stocks.quantity > stocks.reserved')->where('pv.is_active', true);
+        $valueId = fn (string $slug, string $value) => \App\Models\AttributeValue::where('value', $value)
+            ->where('attribute_id', \App\Models\Attribute::where('slug', $slug)->value('id'))->value('id') ?? 0;
+
+        // Talla y color: solo modelos que tengan ese par disponible
         if ($talla !== '' || $color !== '') {
-            $query->whereHas('variants', function ($v) use ($talla, $color, $branchId, $withValue) {
-                $v->where('is_active', true)
-                    ->whereHas('stocks', fn ($s) => $s->where('branch_id', $branchId)->whereRaw('quantity - reserved > 0'))
-                    ->when($talla !== '', fn ($q) => $withValue($q, 'talla', $talla))
-                    ->when($color !== '', fn ($q) => $withValue($q, 'color', $color));
-            });
+            $ids = $inStock();
+            foreach (array_filter(['talla' => $talla, 'color' => $color]) as $slug => $value) {
+                $alias = 'av_'.$slug;
+                $ids->join("attribute_value_product_variant as {$alias}", "{$alias}.product_variant_id", '=', 'pv.id')
+                    ->where("{$alias}.attribute_value_id", $valueId($slug, $value));
+            }
+            $query->whereIn('products.id', $ids->select('pv.product_id'));
         }
 
-        // Opciones de filtro: tallas y colores con stock en esta tienda
-        $available = \App\Models\AttributeValue::with('attribute')
-            ->whereHas('variants', fn ($v) => $v->where('is_active', true)
-                ->whereHas('stocks', fn ($s) => $s->where('branch_id', $branchId)->whereRaw('quantity - reserved > 0'))
-                ->whereHas('product', fn ($p) => $p->published()->when($category, fn ($q) => $q->whereIn('category_id', $category->descendantIds()))))
-            ->orderBy('sort_order')->get()->groupBy(fn ($v) => $v->attribute->slug);
+        // Opciones de filtro: tallas y colores con stock en esta tienda (y en la categoría elegida)
+        // (se guarda 10 minutos: es la misma lista para todos los visitantes)
+        $valueIds = \Illuminate\Support\Facades\Cache::remember("catalogo:filtros:{$branchId}:".($category?->id ?? 'todo'), 600,
+            fn () => $inStock()->join('attribute_value_product_variant as avp', 'avp.product_variant_id', '=', 'pv.id')
+                ->when($category, fn ($q) => $q->join('products as p', 'p.id', '=', 'pv.product_id')->whereIn('p.category_id', $category->descendantIds()))
+                ->distinct()->pluck('avp.attribute_value_id')->all());
+        $available = \App\Models\AttributeValue::with('attribute')->whereIn('id', $valueIds)->orderBy('sort_order')->get()->groupBy(fn ($v) => $v->attribute->slug);
         $sizes = ($available['talla'] ?? collect())->pluck('value')->sortBy(fn ($v) => (int) $v)->values();
         $colors = ($available['color'] ?? collect())->map(fn ($v) => ['name' => $v->value, 'hex' => $v->meta])->values();
 

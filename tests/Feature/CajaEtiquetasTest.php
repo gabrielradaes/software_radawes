@@ -54,11 +54,38 @@ class CajaEtiquetasTest extends TestCase
         $this->actingAs($this->supervisor('el-alto'))->get("/admin/etiquetas?ingreso={$purchase->id}")->assertForbidden();
     }
 
-    public function test_venta_con_escaner_trae_el_sku(): void
+    public function test_buscador_de_modelos_grilla_y_escaner(): void
     {
         $purchase = $this->compra();
-        $this->actingAs($this->vendedor('calacoto'))->get('/admin/ventas/nueva')->assertOk()
-            ->assertSee('Escanea la etiqueta')->assertSee($purchase->items->first()->variant->sku);
+        $vend = $this->vendedor('calacoto');
+        $variant = $purchase->items->first()->variant;
+
+        $this->actingAs($vend)->get('/admin/ventas/nueva')->assertOk()->assertSee('Busca por código o nombre del modelo');
+        $this->actingAs($vend)->get('/admin/stock')->assertOk()->assertSee('Consulta rápida');
+
+        // Buscar por código, por nombre y por SKU
+        $this->actingAs($vend)->getJson('/admin/stock/buscar?q=CH-2')->assertOk()->assertJsonPath('0.code', 'CH-210')->assertJsonPath('0.available', 5);
+        $this->actingAs($vend)->getJson('/admin/stock/buscar?q=chelsea')->assertJsonCount(1);
+        $this->actingAs($vend)->getJson('/admin/stock/buscar?q='.$variant->sku)->assertJsonPath('0.code', 'CH-210');
+        $this->actingAs($vend)->getJson('/admin/stock/buscar?q=zz')->assertJsonCount(0);
+
+        // Grilla colores × tallas por tienda (la mía primero)
+        $m = $this->actingAs($vend)->getJson("/admin/stock/modelo/{$variant->product_id}")->assertOk()->json();
+        $cal = $this->branch('calacoto')->id;
+        $this->assertSame($cal, $m['branch_id']);
+        $this->assertSame($cal, $m['branches'][0]['id']);
+        $this->assertSame(['40', '41'], $m['sizes']);
+        $this->assertSame(3, $m['cells'][$cal]['Negro']['40']['available']);
+        $this->assertSame(0, $m['cells'][$this->branch('el-alto')->id]['Negro']['40']['available']);
+
+        // Código de barras
+        $this->actingAs($vend)->getJson('/admin/stock/sku?code='.strtolower($variant->sku))->assertOk()->assertJson(['ok' => true, 'available' => 3]);
+        $this->actingAs($vend)->getJson('/admin/stock/sku?code=NO-EXISTE')->assertNotFound();
+
+        // Cliente por celular
+        \App\Models\Customer::create(['name' => 'Carlos', 'phone' => '70011222', 'is_active' => true]);
+        $this->actingAs($vend)->getJson('/admin/clientes/buscar?phone=700 11 222')->assertJson(['found' => true, 'name' => 'Carlos']);
+        $this->actingAs($vend)->getJson('/admin/clientes/buscar?phone=79999999')->assertJson(['found' => false]);
     }
 
     public function test_caja_abrir_vender_y_cerrar_con_arqueo(): void

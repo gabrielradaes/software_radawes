@@ -51,24 +51,11 @@ class SaleController extends Controller
         $branches = Branch::active()->when($scoped, fn ($q) => $q->whereKey($scoped))->orderByDesc('is_main')->get();
         $branch = $branches->firstWhere('id', (int) $request->query('sucursal')) ?? $branches->first();
 
-        // Variantes con stock en la tienda elegida
-        $variants = Stock::with('variant.product', 'variant.attributeValues.attribute')
-            ->where('branch_id', $branch->id)->where('quantity', '>', 0)
-            ->whereHas('variant', fn ($v) => $v->where('is_active', true)->whereHas('product', fn ($p) => $p->whereNull('deleted_at')))
-            ->get()
-            ->map(fn ($s) => [
-                'id' => $s->product_variant_id,
-                'label' => trim(($s->variant->product->code ? $s->variant->product->code.' · ' : '').$s->variant->product->name.' · '.$s->variant->label()),
-                'price' => $s->variant->effectivePrice(),
-                'stock' => $s->quantity,
-                'sku' => $s->variant->sku,
-            ])->sortBy('label')->values();
-
         $customer = $request->filled('cliente') ? Customer::find($request->cliente) : null;
 
         $cashOpen = (bool) \App\Models\CashSession::openFor($branch->id);
 
-        return view('admin.sales.create', compact('branches', 'branch', 'variants', 'customer', 'scoped', 'cashOpen'));
+        return view('admin.sales.create', compact('branches', 'branch', 'customer', 'scoped', 'cashOpen'));
     }
 
     public function store(Request $request)
@@ -124,9 +111,7 @@ class SaleController extends Controller
             'returns.user', 'returns.items.variant.product', 'returns.items.variant.attributeValues.attribute');
         $returned = \App\Models\SaleReturnItem::whereIn('sale_item_id', $sale->items->pluck('id'))->where('direction', 'in')
             ->groupBy('sale_item_id')->selectRaw('sale_item_id, SUM(quantity) as q')->pluck('q', 'sale_item_id');
-        $variants = $request->user()->can('sales.create') && $sale->status !== 'anulada' ? \App\Support\VariantOptions::forBranch($sale->branch_id) : collect();
-
-        return view('admin.sales.show', compact('sale', 'returned', 'variants'));
+        return view('admin.sales.show', compact('sale', 'returned'));
     }
 
     /** Cambio de talla / devolución sobre esta venta. */

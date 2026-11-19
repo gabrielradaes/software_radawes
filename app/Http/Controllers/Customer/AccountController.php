@@ -23,8 +23,10 @@ class AccountController extends Controller
         $comments = $customer->comments()->with('commentable')->take(10)->get();
         $leads = $customer->whatsappLeads()->with(['product.primaryImage', 'variant.attributeValues.attribute', 'branch'])->take(10)->get();
         $sales = $customer->sales()->with('items.variant.product', 'branch')->latest('sold_at')->take(10)->get();
+        $orders = \App\Models\Reservation::where('customer_id', $customer->id)->with('items.variant.product', 'items.variant.attributeValues.attribute', 'branch')
+            ->orderByRaw("status = 'activo' desc")->latest('id')->take(10)->get();
 
-        return view('customer.account.index', compact('customer', 'favorites', 'comments', 'leads', 'sales'));
+        return view('customer.account.index', compact('customer', 'favorites', 'comments', 'leads', 'sales', 'orders'));
     }
 
     public function update(Request $request)

@@ -33,7 +33,6 @@ class TransferController extends Controller
         return view('admin.transfers.create', [
             'origins' => $origins, 'from' => $from, 'scoped' => $scoped,
             'destinations' => Branch::active()->whereKeyNot($from->id)->get(),
-            'variants' => VariantOptions::forBranch($from->id),
         ]);
     }
 

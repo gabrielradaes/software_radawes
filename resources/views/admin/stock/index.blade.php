@@ -5,6 +5,11 @@
 @endsection
 
 @section('content')
+<div class="bg-white rounded-xl border-2 border-brand-200 p-5 mb-5">
+    <h3 class="font-semibold mb-1">🔎 Consulta rápida</h3>
+    <p class="text-sm text-slate-500 mb-3">Escribe el código o el nombre del modelo (o escanea la etiqueta) y ve qué tallas y colores hay en {{ $branch->name }} y en las otras tiendas.</p>
+    @include('admin.partials.stock-finder', ['branchId' => $branch->id, 'pick' => false])
+</div>
 <div class="grid grid-cols-3 @can('stock.adjust') lg:grid-cols-5 @endcan gap-4 mb-5 @cannot('stock.adjust') max-w-xl @endcannot">
     <div class="bg-white rounded-xl border border-slate-200 p-4"><p class="text-xs text-slate-500">Unidades</p><p class="text-2xl font-bold">{{ $totals['unidades'] }}</p></div>
     <div class="bg-white rounded-xl border border-amber-200 p-4"><p class="text-xs text-amber-700">Stock bajo</p><p class="text-2xl font-bold text-amber-700">{{ $totals['bajo'] }}</p></div>

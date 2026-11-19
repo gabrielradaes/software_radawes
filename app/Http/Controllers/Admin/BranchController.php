@@ -93,6 +93,7 @@ class BranchController extends Controller
             'whatsapp' => ['required', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:120'],
             'opening_hours' => ['nullable', 'string', 'max:255'],
+            'web_stock_buffer' => ['nullable', 'integer', 'min:0', 'max:20'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'is_main' => ['boolean'],
@@ -106,6 +107,7 @@ class BranchController extends Controller
         $data['whatsapp'] = preg_replace('/\D+/', '', $data['whatsapp']);
         $data['domain'] = isset($data['domain']) ? strtolower(preg_replace('~^https?://|^www\.|/.*$~', '', $data['domain'])) ?: null : null;
         $data['is_main'] = $request->boolean('is_main');
+        $data['web_stock_buffer'] = (int) ($data['web_stock_buffer'] ?? 0);
         $data['is_active'] = $request->boolean('is_active');
         unset($data['links']);
 

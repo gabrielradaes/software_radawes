@@ -1,9 +1,11 @@
 {{-- Escáner: lector USB/Bluetooth (escribe + Enter) o cámara del celular. Emite el evento "scanned" con {code}. --}}
 <div x-data="barcodeScanner()" class="flex gap-2 items-center">
+    @unless($compact ?? false)
     <input type="text" autocomplete="off" placeholder="{{ $placeholder ?? 'Escanea o escribe el código de la etiqueta…' }}"
            @keydown.enter.prevent="emit($event.target.value); $event.target.value = ''"
            class="flex-1 min-w-0 rounded-lg border-2 border-dashed border-brand-300 bg-brand-50/40 px-3 py-2.5 text-sm font-mono focus:border-brand-600 focus:bg-white">
-    <button type="button" @click="camera()" class="shrink-0 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-3 py-2.5 rounded-lg" title="Escanear con la cámara">📷 Cámara</button>
+    @endunless
+    <button type="button" @click="camera()" class="shrink-0 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-3 py-2.5 rounded-lg" title="Escanear con la cámara">📷<span class="{{ ($compact ?? false) ? 'hidden sm:inline' : '' }}"> Cámara</span></button>
 
     <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/85 flex flex-col items-center justify-center p-4 gap-3" @keydown.escape.window="stop()">
         <p class="text-white text-sm">Apunta al código de barras de la etiqueta</p>

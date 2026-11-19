@@ -54,6 +54,8 @@ class Stock extends Model
             'reference_id' => $reference?->getKey(),
         ]);
 
+        \Illuminate\Support\Facades\Cache::forget("stock:totales:{$this->branch_id}");
+
         // Si entró mercadería, avisar a los clientes que esperaban esta talla
         if ($quantity > 0) {
             RestockRequest::stockArrived($this);

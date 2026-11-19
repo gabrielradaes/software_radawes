@@ -14,54 +14,46 @@
 @endunless
 
 @unless($cashOpen)
-    <p class="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-4 py-2.5">La caja de esta tienda está cerrada: la venta se registra igual, pero no entrará en ningún arqueo. @can('sales.create')<a href="{{ route('admin.caja', ['sucursal' => $branch->id]) }}" class="font-semibold underline">Abrir caja</a>@endcan</p>
+    <p class="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-4 py-2.5">La caja de esta tienda está cerrada: la venta se registra igual, pero no entrará en ningún arqueo. <a href="{{ route('admin.caja', ['sucursal' => $branch->id]) }}" class="font-semibold underline">Abrir caja</a></p>
 @endunless
-<form method="POST" action="{{ route('admin.ventas.store') }}" data-once @scanned="addSku($event.detail.code)"
-      x-data="venta(@js($variants), @js(old('items', [['variant_id' => '', 'quantity' => 1, 'price' => '']])))" class="grid lg:grid-cols-3 gap-6">
+
+<form method="POST" action="{{ route('admin.ventas.store') }}" data-once
+      x-data="venta(@js(old('payment_method', 'efectivo')), @js($customer ? ['name' => $customer->name, 'stage' => $customer->stageLabel()] : null), @js(route('admin.clientes.buscar')))"
+      @items-total="subtotal = $event.detail.total; pairs = $event.detail.pairs" class="grid lg:grid-cols-3 gap-6">
     @csrf
     <input type="hidden" name="branch_id" value="{{ $branch->id }}">
-    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-        <h3 class="font-semibold">Productos · {{ $branch->name }}</h3>
-        @include('admin.partials.scanner', ['placeholder' => 'Escanea la etiqueta o escribe el código (SKU) y Enter…'])
-        <p x-show="scanMsg" x-text="scanMsg" class="text-sm" :class="scanOk ? 'text-emerald-700' : 'text-rose-600'"></p>
-        @error('items')<p class="text-sm text-rose-600">{{ $message }}</p>@enderror
-        @if($variants->isEmpty())
-            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">No hay productos con stock en esta tienda.</p>
-        @endif
-        <template x-for="(it, i) in items" :key="i">
-            <div class="grid grid-cols-12 gap-2 items-end">
-                <label class="col-span-12 sm:col-span-7 text-xs text-slate-500">Producto, talla y color
-                    <select :name="`items[${i}][variant_id]`" x-model="it.variant_id" @change="pick(it)" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800">
-                        <option value="">Elige…</option>
-                        <template x-for="v in variants" :key="v.id"><option :value="v.id" :selected="v.id == it.variant_id" x-text="`${v.label} (hay ${v.stock})`"></option></template>
-                    </select></label>
-                <label class="col-span-4 sm:col-span-2 text-xs text-slate-500">Cant.
-                    <input type="number" min="1" :max="max(it)" :name="`items[${i}][quantity]`" x-model.number="it.quantity" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"></label>
-                <label class="col-span-6 sm:col-span-2 text-xs text-slate-500">Precio c/u
-                    <input type="number" min="0" step="0.01" :name="`items[${i}][price]`" x-model="it.price" :placeholder="base(it)" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"></label>
-                <button type="button" @click="items.splice(i, 1)" x-show="items.length > 1" class="col-span-2 sm:col-span-1 h-10 text-rose-600 hover:bg-rose-50 rounded-lg">✕</button>
-            </div>
-        </template>
-        <button type="button" @click="items.push({variant_id: '', quantity: 1, price: ''})" class="text-sm font-semibold text-brand-700 hover:underline">+ Agregar otro producto</button>
+
+    <div class="lg:col-span-2 min-w-0 bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <h3 class="font-semibold text-lg">1. ¿Qué se lleva? <span class="text-sm font-normal text-slate-500">· {{ $branch->name }}</span></h3>
+        @error('items')<p class="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{{ $message }}</p>@enderror
+        @include('admin.partials.items-picker', ['name' => 'items', 'branchId' => $branch->id, 'withPrice' => true, 'old' => old('items')])
     </div>
 
-    <div class="space-y-6">
-        <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
-            <h3 class="font-semibold">Cliente <span class="text-xs text-slate-400 font-normal">(opcional)</span></h3>
+    <div class="space-y-5">
+        <div class="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+            <h3 class="font-semibold text-lg">2. Cliente <span class="text-xs text-slate-400 font-normal">(opcional)</span></h3>
             <x-admin.field label="Celular" name="customer_phone">
-                <input name="customer_phone" value="{{ old('customer_phone', $customer?->phone) }}" inputmode="tel" placeholder="70011222" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <input name="customer_phone" x-model="phone" @input.debounce.400ms="lookup()" value="{{ old('customer_phone', $customer?->phone) }}" inputmode="tel" placeholder="70011222" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
             </x-admin.field>
-            <x-admin.field label="Nombre (si es nuevo)" name="customer_name">
-                <input name="customer_name" value="{{ old('customer_name', $customer?->name) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-            </x-admin.field>
-            <p class="text-xs text-slate-500">Si el celular ya existe se usa su ficha; si no, se registra al cliente.</p>
+            <p x-show="found" class="text-sm text-emerald-700">✔ <strong x-text="found?.name"></strong> <span class="text-xs text-slate-500" x-text="found?.stage"></span></p>
+            <div x-show="!found && phone.replace(/\D/g, '').length >= 7">
+                <x-admin.field label="Nombre (cliente nuevo)" name="customer_name">
+                    <input name="customer_name" value="{{ old('customer_name') }}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                </x-admin.field>
+            </div>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
+
+        <div class="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+            <h3 class="font-semibold text-lg">3. Cobrar</h3>
+            <input type="hidden" name="payment_method" :value="pay">
+            <div class="grid grid-cols-2 gap-2">
+                @foreach(['efectivo' => '💵 Efectivo', 'qr' => '📱 QR', 'tarjeta' => '💳 Tarjeta', 'transferencia' => '🏦 Transferencia'] as $k => $l)
+                    <button type="button" @click="pay = '{{ $k }}'" :class="pay === '{{ $k }}' ? 'bg-brand-900 text-white border-brand-900' : 'bg-white border-slate-300 hover:border-brand-500'" class="border rounded-xl py-2.5 text-sm font-semibold">{{ $l }}</button>
+                @endforeach
+            </div>
             <div class="grid grid-cols-2 gap-3">
-                <x-admin.field label="Pago" name="payment_method">
-                    <select name="payment_method" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                        @foreach(\App\Services\SaleService::PAYMENTS as $k => $l)<option value="{{ $k }}" @selected(old('payment_method') === $k)>{{ $l }}</option>@endforeach
-                    </select>
+                <x-admin.field label="Descuento (Bs.)" name="discount">
+                    <input type="number" min="0" step="0.01" name="discount" x-model.number="discount" value="{{ old('discount') }}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 </x-admin.field>
                 <x-admin.field label="Canal" name="channel">
                     <select name="channel" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
@@ -69,12 +61,13 @@
                     </select>
                 </x-admin.field>
             </div>
-            <x-admin.field label="Descuento total (Bs.)" name="discount">
-                <input type="number" min="0" step="0.01" name="discount" x-model.number="discount" value="{{ old('discount') }}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-            </x-admin.field>
+            <div class="flex justify-between items-baseline border-t border-slate-100 pt-3"><span class="text-slate-500" x-text="pairs + ' par(es)'"></span><span class="text-3xl font-bold" x-text="'Bs ' + total().toFixed(2)"></span></div>
+            <div x-show="pay === 'efectivo' && total() > 0" class="grid grid-cols-2 gap-3 items-end">
+                <label class="text-xs text-slate-500">Recibí (Bs.)<input type="number" min="0" step="0.5" x-model.number="received" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800"></label>
+                <p class="text-sm pb-2" x-show="received > 0"><span class="text-slate-500">Cambio:</span> <strong class="text-lg" :class="received - total() < 0 ? 'text-rose-600' : 'text-emerald-700'" x-text="received - total() < 0 ? 'falta Bs ' + (total() - received).toFixed(2) : 'Bs ' + (received - total()).toFixed(2)"></strong></p>
+            </div>
             <x-admin.field label="Notas" name="notes"><input name="notes" value="{{ old('notes') }}" maxlength="500" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></x-admin.field>
-            <div class="flex justify-between items-baseline border-t border-slate-100 pt-3"><span class="text-slate-500">Total</span><span class="text-2xl font-bold" x-text="'Bs ' + total().toFixed(2)"></span></div>
-            <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-3 rounded-lg" @disabled($variants->isEmpty())>Registrar venta</button>
+            <button :disabled="!pairs" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-3.5 rounded-xl text-lg disabled:opacity-40">✔ Registrar venta</button>
         </div>
     </div>
 </form>
@@ -82,29 +75,16 @@
 
 @push('scripts')
 <script>
-function venta(variants, items) {
+function venta(pay, customer, lookupUrl) {
     return {
-        variants, items, discount: 0, scanMsg: '', scanOk: true,
-        addSku(code) {
-            const v = this.variants.find(v => (v.sku || '').toUpperCase() === code.toUpperCase());
-            if (!v) { this.scanOk = false; this.scanMsg = `«${code}» no tiene stock en esta tienda o no existe.`; return; }
-            const row = this.items.find(it => it.variant_id == v.id);
-            if (row) {
-                if (row.quantity >= v.stock) { this.scanOk = false; this.scanMsg = `Solo hay ${v.stock} de ${v.label}.`; return; }
-                row.quantity++;
-            } else {
-                const empty = this.items.find(it => !it.variant_id);
-                empty ? Object.assign(empty, { variant_id: String(v.id), quantity: 1, price: '' }) : this.items.push({ variant_id: String(v.id), quantity: 1, price: '' });
-            }
-            this.scanOk = true; this.scanMsg = '✔ ' + v.label;
-        },
-        find(it) { return this.variants.find(v => v.id == it.variant_id); },
-        base(it) { const v = this.find(it); return v ? v.price : ''; },
-        max(it) { const v = this.find(it); return v ? v.stock : 999; },
-        pick(it) { it.price = ''; },
-        total() {
-            const sum = this.items.reduce((s, it) => s + (parseFloat(it.price || this.base(it) || 0) * (parseInt(it.quantity) || 0)), 0);
-            return Math.max(0, sum - (parseFloat(this.discount) || 0));
+        pay, subtotal: 0, pairs: 0, discount: 0, received: '', phone: @js(old('customer_phone', $customer?->phone ?? '')), found: customer,
+        total() { return Math.max(0, this.subtotal - (parseFloat(this.discount) || 0)); },
+        async lookup() {
+            const digits = this.phone.replace(/\D/g, '');
+            if (digits.length < 7) { this.found = null; return; }
+            const r = await fetch(lookupUrl + '?phone=' + digits, { headers: { Accept: 'application/json' } });
+            const d = await r.json().catch(() => null);
+            this.found = d && d.found ? d : null;
         },
     };
 }

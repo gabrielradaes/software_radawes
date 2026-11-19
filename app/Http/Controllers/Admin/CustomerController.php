@@ -35,6 +35,15 @@ class CustomerController extends Controller
         return view('admin.customers.index', compact('customers', 'q', 'totals', 'tags'));
     }
 
+    /** Buscar cliente por celular (Nueva venta, apartados): JSON corto. */
+    public function lookup(Request $request)
+    {
+        $phone = preg_replace('/\D+/', '', (string) $request->query('phone'));
+        $c = strlen($phone) >= 7 ? Customer::where('phone', preg_replace('/^591/', '', $phone))->first() : null;
+
+        return response()->json($c ? ['found' => true, 'id' => $c->id, 'name' => $c->name, 'stage' => $c->stageLabel(), 'size' => $c->preferred_size] : ['found' => false]);
+    }
+
     public function create()
     {
         return view('admin.customers.form', ['customer' => new Customer(['city' => 'La Paz'])]);

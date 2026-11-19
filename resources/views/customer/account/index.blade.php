@@ -18,10 +18,29 @@
     @endif
 
     <div class="flex gap-2 overflow-x-auto no-scrollbar mb-6 text-sm">
-        @foreach(['favoritos' => '❤️ Favoritos ('.$favorites->count().')', 'consultas' => '📱 Mis consultas ('.$leads->count().')', 'comentarios' => '💬 Mis comentarios ('.$comments->count().')', 'compras' => '🧾 Mis compras ('.$sales->count().')', 'datos' => '⚙️ Mis datos'] as $k => $label)
+        @foreach(['pedidos' => '🛍️ Mis pedidos ('.$orders->where('status', 'activo')->count().')', 'favoritos' => '❤️ Favoritos ('.$favorites->count().')', 'consultas' => '📱 Mis consultas ('.$leads->count().')', 'comentarios' => '💬 Mis comentarios ('.$comments->count().')', 'compras' => '🧾 Mis compras ('.$sales->count().')', 'datos' => '⚙️ Mis datos'] as $k => $label)
             <button @click="tab = @js($k)" :class="tab === @js($k) ? 'bg-brand-900 text-white border-brand-900' : 'bg-white border-brand-200 hover:bg-brand-50'" class="shrink-0 px-4 py-2 rounded-full border font-medium transition">{{ $label }}</button>
         @endforeach
     </div>
+
+    {{-- Pedidos separados / apartados --}}
+    <section x-show="tab === 'pedidos'" x-cloak class="space-y-3 max-w-3xl">
+        @forelse($orders as $o)
+            <div class="bg-white rounded-2xl border border-brand-100 p-4">
+                <div class="flex flex-wrap justify-between gap-2">
+                    <p class="font-semibold">Pedido {{ $o->code }} · {{ $o->branch->name }}</p>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-full {{ ['activo' => $o->isExpired() ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-800', 'retirado' => 'bg-brand-100 text-brand-800', 'cancelado' => 'bg-slate-100 text-slate-500'][$o->status] ?? 'bg-slate-100' }}">
+                        {{ $o->status === 'activo' ? ($o->isExpired() ? 'Venció' : 'Te lo guardamos hasta el '.$o->expires_at->isoFormat('D MMM')) : ucfirst($o->status) }}</span>
+                </div>
+                <ul class="mt-2 text-sm text-brand-700">
+                    @foreach($o->items as $it)<li>{{ $it->quantity }} × {{ $it->variant->product->name }} · {{ $it->variant->label() }} — {{ money($it->unit_price) }}</li>@endforeach
+                </ul>
+                @if($o->status === 'activo')<p class="mt-2 text-sm">Pagas al retirar: <strong>{{ money($o->balance()) }}</strong></p>@endif
+            </div>
+        @empty
+            <div class="bg-white rounded-2xl border border-brand-100 p-8 text-center text-brand-500">Todavía no separaste ningún par. En cada producto elige tu talla y toca <strong>«Separar en tienda»</strong>.</div>
+        @endforelse
+    </section>
 
     {{-- Favoritos --}}
     <section x-show="tab === 'favoritos'" x-cloak>

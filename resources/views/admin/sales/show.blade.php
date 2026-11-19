@@ -81,7 +81,7 @@
                 </div>
                 <div>
                     <p class="text-sm font-medium mb-2">2. ¿Qué se lleva a cambio? <span class="font-normal text-slate-500">(déjalo vacío si solo devuelve)</span></p>
-                    @include('admin.partials.items-picker', ['name' => 'items', 'withPrice' => false, 'optional' => true, 'old' => old('items')])
+                    @include('admin.partials.items-picker', ['name' => 'items', 'branchId' => $sale->branch_id, 'withPrice' => false, 'optional' => true, 'old' => old('items')])
                 </div>
                 <div class="grid sm:grid-cols-3 gap-3 items-end">
                     <x-admin.field label="La diferencia se paga / devuelve en" name="payment_method">

@@ -26,6 +26,9 @@
                 <x-admin.field label="Correo" name="email"><input type="email" name="email" value="{{ old('email', $branch->email) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2"></x-admin.field>
             </div>
             <x-admin.field label="Horario" name="opening_hours"><input name="opening_hours" value="{{ old('opening_hours', $branch->opening_hours) }}" placeholder="Lunes a sábado 9:00 – 19:30" class="w-full rounded-lg border border-slate-300 px-3 py-2"></x-admin.field>
+            <x-admin.field label="Pares que no se ofrecen en la página (por talla y color)" name="web_stock_buffer" help="Ej.: 1 = si de una talla queda 1 solo par, la página la muestra agotada y ese par queda para el mostrador. 0 = se ofrece todo.">
+                <input type="number" min="0" max="20" name="web_stock_buffer" value="{{ old('web_stock_buffer', $branch->web_stock_buffer ?? 0) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+            </x-admin.field>
             <div class="grid sm:grid-cols-2 gap-4">
                 <x-admin.field label="Latitud" name="latitude" help="Para el mapa. En Google Maps: clic derecho → copiar coordenadas"><input name="latitude" value="{{ old('latitude', $branch->latitude) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2"></x-admin.field>
                 <x-admin.field label="Longitud" name="longitude"><input name="longitude" value="{{ old('longitude', $branch->longitude) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2"></x-admin.field>

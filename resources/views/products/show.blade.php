@@ -93,12 +93,12 @@
                     </div>
                     <div class="flex flex-wrap gap-2">
                         @foreach($sizes as $s)
-                            <button type="button" @click="stockOf(@js($s)) > 0 && (size = @js($s))"
-                                    :disabled="stockOf(@js($s)) === 0"
-                                    :class="size === @js($s) ? 'bg-brand-900 text-white border-brand-900' : (stockOf(@js($s)) > 0 ? 'bg-white border-brand-200 hover:border-brand-900' : 'bg-brand-50 border-brand-100 text-brand-300 line-through cursor-not-allowed')"
+                            <button type="button" @click="size = @js($s)"
+                                    :class="size === @js($s) ? (stockOf(@js($s)) > 0 ? 'bg-brand-900 text-white border-brand-900' : 'bg-brand-200 text-brand-700 border-brand-400 line-through') : (stockOf(@js($s)) > 0 ? 'bg-white border-brand-200 hover:border-brand-900' : 'bg-brand-50 border-brand-100 text-brand-300 line-through')"
+                                    :title="stockOf(@js($s)) > 0 ? '' : 'Agotada aquí: tócala para ver otras tiendas o pedir aviso'"
                                     class="relative w-14 h-12 rounded-xl border font-semibold text-sm transition">
                                 {{ $s }}
-                                <span x-show="stockOf(@js($s)) > 0 && stockOf(@js($s)) <= 2" class="absolute -top-1.5 -right-1.5 bg-gold-500 text-brand-950 text-[9px] font-bold px-1 rounded-full">¡{{ '' }}<span x-text="stockOf(@js($s))"></span>!</span>
+                                <span x-show="stockOf(@js($s)) === 1" class="absolute -top-1.5 -right-1.5 bg-gold-500 text-brand-950 text-[9px] font-bold px-1 rounded-full">¡Últimos!</span>
                             </button>
                         @endforeach
                     </div>
@@ -109,12 +109,19 @@
             <div class="mt-6 text-sm">
                 <template x-if="variant">
                     <p>
-                        <span x-show="stock > 0" class="inline-flex items-center gap-1.5 text-emerald-700 font-medium"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Disponible en {{ $branch->name }} <span class="text-brand-500 font-normal" x-text="'(' + stock + ' en stock)'"></span></p>
-                        <span x-show="stock === 0" class="inline-flex items-center gap-1.5 text-rose-600 font-medium"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Agotado en esta sucursal: consúltanos, podemos conseguirlo</p>
+                        <span x-show="stock === 2" class="inline-flex items-center gap-1.5 text-emerald-700 font-medium"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Disponible en {{ $branch->name }}</span>
+                        <span x-show="stock === 1" class="inline-flex items-center gap-1.5 text-amber-700 font-medium"><span class="w-2 h-2 rounded-full bg-amber-500"></span> ¡Últimos pares en {{ $branch->name }}! Sepáralo antes de que se acabe.</span>
+                        <span x-show="stock === 0" class="block">
+                            <span class="inline-flex items-center gap-1.5 text-rose-600 font-medium"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Agotado en {{ $branch->name }}.</span>
+                            <template x-if="variant.elsewhere.length">
+                                <span class="block mt-1 text-emerald-700">✔ Hay en: <template x-for="(b, i) in variant.elsewhere" :key="b.url"><a :href="b.url" class="font-semibold underline underline-offset-2 mr-2" x-text="b.name"></a></template></span>
+                            </template>
+                            <template x-if="!variant.elsewhere.length"><span class="block mt-1 text-brand-500">Pide aviso abajo y te escribimos apenas llegue.</span></template>
+                        </span>
                     </p>
                 </template>
                 <template x-if="!variant && hasSizes">
-                    <p class="text-brand-500">Elige tu talla para ver disponibilidad. @if($totalStock > 0) <span class="text-emerald-700">{{ $totalStock }} pares en stock.</span> @endif</p>
+                    <p class="text-brand-500">Elige tu talla para ver disponibilidad. @if($totalStock > 0) <span class="text-emerald-700">Hay tallas disponibles en {{ $branch->name }}.</span> @endif</p>
                 </template>
             </div>
 
@@ -162,8 +169,32 @@
                 </div>
             @endif
 
+            {{-- Pedido separado desde la página --}}
+            @if(session('web_order'))
+                <div class="mt-6 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-sm text-emerald-900">
+                    <p class="font-semibold text-base">✅ ¡Listo! Te separamos el par (pedido {{ session('web_order')['code'] }}).</p>
+                    <p class="mt-1">Te lo guardamos en {{ $branch->name }} hasta el <strong>{{ session('web_order')['until'] }}</strong>. Te escribiremos por WhatsApp para confirmar; también puedes escribirnos tú:</p>
+                    <a href="{{ session('web_order')['wa'] }}" target="_blank" rel="noopener" class="mt-2 inline-flex items-center gap-2 bg-wa-500 hover:bg-wa-600 text-white font-semibold px-4 py-2 rounded-full"><x-icon-whatsapp class="w-4 h-4"/> Confirmar por WhatsApp</a>
+                </div>
+            @endif
+            @error('separar')<p class="mt-4 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">{{ $message }}</p>@enderror
+            <div x-data="{ open: @js($errors->hasAny(['separar', 'sep_name', 'sep_phone'])) }" x-show="variant && stock > 0" x-cloak class="mt-7">
+                <button type="button" @click="open = !open" class="w-full inline-flex items-center justify-center gap-2 bg-brand-900 hover:bg-brand-700 text-white font-semibold px-6 py-3.5 rounded-full text-base transition">
+                    🛍️ <span x-text="'Separar ' + (hasSizes ? 'talla ' + size : color) + ' en tienda'"></span>
+                </button>
+                <form x-show="open" x-cloak method="POST" action="{{ route('products.reserve', ['product' => $product->slug]) }}" class="mt-3 bg-brand-50 border border-brand-100 rounded-2xl p-4 grid sm:grid-cols-2 gap-3 text-sm">
+                    @csrf
+                    <input type="hidden" name="variant_id" :value="variant?.id">
+                    <p class="sm:col-span-2 text-brand-700">Te lo guardamos <strong>2 días</strong> en {{ $branch->name }}. Pagas al retirarlo (sin adelanto).</p>
+                    <input name="sep_name" required maxlength="150" value="{{ old('sep_name', auth('customer')->user()?->name) }}" placeholder="Tu nombre" class="rounded-xl border border-brand-200 px-3 py-2">
+                    <input name="sep_phone" required inputmode="tel" value="{{ old('sep_phone', auth('customer')->user()?->phone) }}" placeholder="Celular (ej.: 70011222)" class="rounded-xl border border-brand-200 px-3 py-2">
+                    @if($errors->hasAny(['sep_name', 'sep_phone']))<p class="sm:col-span-2 text-rose-600 text-xs">{{ $errors->first('sep_phone') ?: $errors->first('sep_name') }}</p>@endif
+                    <button class="sm:col-span-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-full">Separar ahora</button>
+                </form>
+            </div>
+
             {{-- CTA --}}
-            <div class="mt-7 flex flex-col sm:flex-row gap-3">
+            <div class="mt-4 flex flex-col sm:flex-row gap-3">
                 <a :href="waUrl()" target="_blank" rel="noopener" class="flex-1 inline-flex items-center justify-center gap-2 bg-wa-500 hover:bg-wa-600 text-white font-semibold px-6 py-3.5 rounded-full text-base transition shadow-lg shadow-wa-500/30">
                     <x-icon-whatsapp class="w-5 h-5"/>
                     <span x-text="variant ? 'Pedir ' + (hasSizes ? 'talla ' + size : color) + ' por WhatsApp' : 'Consultar por WhatsApp'"></span>

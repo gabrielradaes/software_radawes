@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /** Apartado: el cliente deja un adelanto y los pares quedan reservados hasta que los retire. */
 class Reservation extends Model
 {
-    protected $fillable = ['code', 'branch_id', 'customer_id', 'user_id', 'sale_id', 'status', 'total', 'deposit', 'deposit_method', 'expires_at', 'notes'];
+    protected $fillable = ['code', 'branch_id', 'customer_id', 'user_id', 'sale_id', 'status', 'source', 'total', 'deposit', 'deposit_method', 'expires_at', 'notes'];
 
     protected $casts = ['total' => 'decimal:2', 'deposit' => 'decimal:2', 'expires_at' => 'date'];
 
