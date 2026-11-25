@@ -95,6 +95,24 @@ class Parser
             || (bool) preg_match('/^\W*(cancela(?:r|lo)?|anula(?:r|lo)?|olvidalo)\b/', $this->a);
     }
 
+    /** Saludo, agradecimiento o despedida sin ninguna orden ("hola", "buenos días", "gracias"). */
+    public function isGreeting(): bool
+    {
+        return (bool) preg_match('/^\W*(?:(?:hola|holi|buen[oa]s?(?:\s+(?:dias|tardes|noches))?|que tal|hey|saludos|gracias|muchas gracias|ok gracias|chau|chao|adios|hasta luego)\W*)+$/', $this->a);
+    }
+
+    /** "No sé", "no tiene", "ninguno"… (respuesta a un dato que no se conoce). */
+    public function saysNone(): bool
+    {
+        return (bool) preg_match('/^\W*(?:no|nada|ninguno|ninguna|no tiene|no hay|no se|no lo se|no sabemos|no tengo|sin\b.*|todavia no|aun no|despues|luego)\W*$/', $this->a);
+    }
+
+    /** El texto parece un código de modelo (letras pegadas a números: CH-500, MF12). */
+    public function looksLikeCode(): bool
+    {
+        return (bool) preg_match('/\b[a-z]{1,5}-?\d{2,}|\b\d{2,}-[a-z]{1,4}\b/', $this->a) && ! preg_match('/\b(?:bs|bolivianos)\b/', $this->a);
+    }
+
     public function says(string $regex): bool
     {
         return (bool) preg_match($regex, $this->a);
@@ -333,7 +351,32 @@ class Parser
         }
         $start = $m[0][1] + strlen($m[0][0]);
 
-        return $this->nameFrom($start);
+        $name = $this->nameFrom($start);
+
+        return $name && ! self::isGenericName($name) ? $name : null;
+    }
+
+    /** "Calzado", "zapatos nuevos", "un producto"… no son el nombre de un modelo. */
+    public static function isGenericName(string $name): bool
+    {
+        $generic = '/^(?:calzados?|zapatos?|zapatillas?|productos?|modelos?|nuev[oa]s?|par|pares|mercaderia|stock|articulos?|un|una|unos|unas|otro|otra|otros|mas|el|la|los|las|de|del|para|no|se|nada|ninguno|cosa|cosas|algo|esto|eso|quiero|agregar|registrar|calzad[oa]s?)$/';
+        $words = preg_split('/[^a-z0-9]+/', self::fold($name), -1, PREG_SPLIT_NO_EMPTY);
+
+        return ! $words || collect($words)->every(fn ($w) => preg_match($generic, $w));
+    }
+
+    /**
+     * Respuesta corta a "¿en qué colores?": solo palabras que pueden ser colores (sin números ni datos de otra pregunta).
+     * @return string[]|null null si la respuesta no parece una lista de colores
+     */
+    public function bareColors(): ?array
+    {
+        $items = $this->bareList()->map(fn ($w) => Str::ucfirst(trim($w)))->filter()->values();
+        $ok = $items->isNotEmpty() && $items->every(fn ($w) => mb_strlen($w) >= 3 && mb_strlen($w) <= 24
+            && preg_match('/^[\p{L} ]+$/u', $w) && count(explode(' ', $w)) <= 2
+            && ! preg_match('/\b('.self::STOP.'|precio|talla|tallas|codigo|stock|hay|cuanto|cuantos|quiero|no|si)\b/', self::fold($w)));
+
+        return $ok ? $items->all() : null;
     }
 
     /** Toma el texto desde $byteOffset (en $a) hasta la primera palabra que corta. */

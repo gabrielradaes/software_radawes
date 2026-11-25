@@ -1,7 +1,8 @@
 @extends('admin.layouts.app')
 @section('title', 'Asistente')
 @section('actions')
-    <form method="POST" action="{{ route('admin.asistente.limpiar') }}" onsubmit="return confirm('¿Borrar la conversación? Lo que ya se registró en el sistema no se borra.')">
+    @can('activity.view')<a href="{{ route('admin.asistente.equipo') }}" class="text-sm text-slate-600 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-200">👥 Chats del equipo</a>@endcan
+    <form method="POST" action="{{ route('admin.asistente.limpiar') }}" onsubmit="return confirm('¿Empezar una conversación nueva? Lo que ya se registró en el sistema no cambia.')">
         @csrf @method('DELETE')
         <button class="text-sm text-slate-500 hover:text-slate-800 px-3 py-2 rounded-lg hover:bg-slate-200">🧹 Nueva conversación</button>
     </form>

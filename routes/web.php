@@ -34,6 +34,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Asistente por voz/texto (cada orden se valida con los permisos del rol)
         Route::get('asistente', [Admin\AssistantController::class, 'index'])->name('asistente');
+        Route::get('asistente/equipo', [Admin\AssistantController::class, 'team'])->middleware('can:activity.view')->name('asistente.equipo');
         Route::middleware('throttle:60,1')->group(function () {
             Route::post('asistente/mensaje', [Admin\AssistantController::class, 'message'])->name('asistente.mensaje');
             Route::post('asistente/confirmar', [Admin\AssistantController::class, 'confirm'])->name('asistente.confirmar');
@@ -156,6 +157,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
         Route::middleware('can:stock.adjust')->group(function () {
             Route::post('stock/{stock}/movimiento', [Admin\StockController::class, 'move'])->name('stock.move');
+            Route::get('stock/ingresar', [Admin\StockEntryController::class, 'create'])->name('stock.ingresar');
+            Route::post('stock/ingresar', [Admin\StockEntryController::class, 'store'])->name('stock.ingresar.store');
             Route::get('productos/{product:id}/variantes', [Admin\VariantController::class, 'index'])->name('productos.variantes');
             Route::post('productos/{product:id}/variantes/generar', [Admin\VariantController::class, 'generate'])->name('productos.variantes.generar');
             Route::post('productos/{product:id}/variantes/stock', [Admin\VariantController::class, 'saveStock'])->name('productos.variantes.stock');

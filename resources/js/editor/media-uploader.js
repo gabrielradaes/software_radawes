@@ -140,6 +140,7 @@
             totalSize() { return this.items.reduce((s, i) => s + i.size + (i.poster ? i.poster.size : 0), 0); },
 
             submit(e) {
+                if (e.defaultPrevented) return;   // el formulario ya lo frenó (p. ej. no confirmaron)
                 if (this.uploading) { e.preventDefault(); return; }
                 // Sin archivos nuevos: el formulario se envía normal
                 if (!this.items.length) return;

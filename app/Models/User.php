@@ -52,6 +52,11 @@ class User extends Authenticatable
         return $this->hasMany(Sale::class);
     }
 
+    public function assistantMessages(): HasMany
+    {
+        return $this->hasMany(AssistantMessage::class);
+    }
+
     public function hasRole(string ...$roles): bool
     {
         return $this->role && in_array($this->role->name, $roles, true);

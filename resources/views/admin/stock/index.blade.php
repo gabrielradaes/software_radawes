@@ -1,6 +1,7 @@
 @extends('admin.layouts.app')
 @section('title', 'Stock · '.$branch->name)
 @section('actions')
+    @can('stock.adjust')<a href="{{ route('admin.stock.ingresar') }}" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">➕ Ingresar calzado</a>@endcan
     @unless($scoped)<a href="{{ route('admin.stock.global') }}" class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">🌐 Stock global (todas las tiendas)</a>@endunless
 @endsection
 
@@ -22,7 +23,7 @@
 
 @can('stock.adjust')
 <div class="bg-sky-50 border border-sky-200 text-sky-900 text-sm rounded-xl px-4 py-3 mb-5">
-    <strong>Cómo cargar stock:</strong> usa <em>Grilla</em> en cualquier fila para cargar todas las tallas y colores de ese producto de una vez, o <em>Movimiento</em> para una sola variante (entrada, salida o ajuste). Todo queda en el kardex.
+    <strong>¿Llegaron pares?</strong> Toca <a href="{{ route('admin.stock.ingresar') }}" class="font-semibold underline">➕ Ingresar calzado</a>: eliges el modelo (o lo creas ahí mismo), marcas colores y tallas y escribes cuántos llegaron. También puedes usar <em>Grilla</em> en cualquier fila para corregir cantidades, o <em>Movimiento</em> para una sola variante. Todo queda en el kardex.
 </div>
 @endcan
 <form method="GET" class="bg-white rounded-xl border border-slate-200 p-4 mb-5 flex flex-wrap gap-3 items-center">

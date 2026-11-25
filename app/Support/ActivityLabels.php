@@ -34,6 +34,7 @@ class ActivityLabels
         'admin.apartados.cancelar' => 'Canceló un apartado',
         // Stock
         'admin.stock.move' => 'Movió stock',
+        'admin.stock.ingresar.store' => 'Ingresó calzado al stock',
         'admin.compras.store' => 'Registró una compra al proveedor',
         'admin.proveedores.store' => 'Agregó un proveedor',
         'admin.proveedores.update' => 'Editó un proveedor',

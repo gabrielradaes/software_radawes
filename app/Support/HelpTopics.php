@@ -30,7 +30,14 @@ class HelpTopics
         'admin.stock.index' => ['Consultar stock', [
             'En <b>Consulta rápida</b> escribe el código o nombre: verás todas las tallas y colores disponibles.',
             'Los números en verde están disponibles; los apartados ya no se pueden vender.',
-            'Para cargar pares nuevos usa <b>Compras</b> (con curva de tallas) o el botón de movimiento del producto.',
+            'Para cargar pares nuevos toca <b>➕ Ingresar calzado</b> (arriba a la derecha): sirve para modelos que ya existen y para modelos nuevos.',
+        ]],
+        'admin.stock.ingresar' => ['Ingresar calzado', [
+            '<b>1.</b> Elige la tienda (si eres admin) y busca el modelo por código o nombre. Si nunca lo registraste, toca <b>➕ Modelo nuevo</b> y llena nombre, clase y precio.',
+            '<b>2.</b> Marca los colores y las tallas que llegaron (puedes agregar colores o tallas que no estén en la lista).',
+            '<b>3.</b> En la tabla escribe cuántos pares llegaron de cada color y talla. Debajo ves cuántos <i>hay</i> ahora: lo que escribas se <b>suma</b>.',
+            'Toca <b>Guardar ingreso</b>. Queda en el kardex como entrada, con tu nombre. Después puedes imprimir etiquetas o publicarlo.',
+            'Esto es lo mismo que hace el asistente, pero a mano: si el asistente no te entiende, usa esta pantalla.',
         ]],
         'admin.productos.index' => ['Productos', [
             'Toca <b>+ Nuevo producto</b> para crear un modelo: nombre, código, clase y precio.',
@@ -138,6 +145,13 @@ class HelpTopics
         'admin.asistente' => ['Asistente', [
             'Escribe o habla como si fuera una persona: "vendí un Chelsea 40 negro en efectivo", "¿hay 38 del CH-210?".',
             'Antes de guardar algo te pide confirmar.',
+            'Si no te entiende, toca el botón <b>✋ Hacerlo a mano</b> que aparece debajo de su respuesta: abre la pantalla para hacerlo tú mismo.',
+            'Para ingresar calzados a mano: menú <b>Stock → ➕ Ingresar calzado</b>.',
+        ]],
+        'admin.asistente.equipo' => ['Chats del equipo', [
+            'Aquí ves lo que cada persona le pidió al asistente y lo que respondió (solo lectura).',
+            'Sirve para ver dónde se confunde y enseñarle al equipo a pedirlo mejor, o usar la pantalla manual.',
+            'Lo que alguien ocultó con «Nueva conversación» aparece más claro, pero sigue aquí.',
         ]],
     ];
 

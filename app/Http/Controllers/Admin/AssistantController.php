@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Assistant\Assistant;
 use App\Http\Controllers\Controller;
 use App\Models\AssistantMessage;
+use App\Models\Role;
+use App\Models\User;
 use App\Support\ImageUpload;
 use Illuminate\Http\Request;
 
@@ -18,7 +20,7 @@ class AssistantController extends Controller
 
     public function index(Request $request)
     {
-        $messages = AssistantMessage::where('user_id', $request->user()->id)->latest('id')->limit(40)->get()->reverse()->values();
+        $messages = AssistantMessage::where('user_id', $request->user()->id)->whereNull('hidden_at')->latest('id')->limit(40)->get()->reverse()->values();
 
         if ($messages->isEmpty()) {
             $welcome = (new Assistant($request->user()))->handle('ayuda');
@@ -59,14 +61,41 @@ class AssistantController extends Controller
         return $this->run($request, 'Cancelar', fn (Assistant $a) => $a->cancel());
     }
 
-    /** Borra el historial visible y la conversación pendiente del usuario. */
+    /** Limpia la pantalla y la conversación pendiente (los mensajes quedan guardados para que el admin pueda revisarlos). */
     public function clear(Request $request)
     {
         (new Assistant($request->user(), $request->session()->get(self::KEY)))->cancel();
         $request->session()->forget(self::KEY);
-        AssistantMessage::where('user_id', $request->user()->id)->delete();
+        AssistantMessage::where('user_id', $request->user()->id)->whereNull('hidden_at')->update(['hidden_at' => now()]);
 
         return redirect()->route('admin.asistente');
+    }
+
+    /**
+     * Conversaciones del equipo con el asistente (solo lectura): para ver qué le piden y en qué se confunde.
+     * El admin ve a todos; el supervisor, a la gente de su tienda (no a los administradores).
+     */
+    public function team(Request $request)
+    {
+        $viewer = $request->user();
+        $people = User::with('role', 'branch')
+            ->whereIn('id', AssistantMessage::select('user_id')->distinct())
+            ->when(! $viewer->isAdmin(), fn ($q) => $q->where('branch_id', $viewer->branch_id)
+                ->whereDoesntHave('role', fn ($r) => $r->where('name', Role::ADMIN)))
+            ->withCount(['assistantMessages as asked' => fn ($q) => $q->where('role', 'user')])
+            ->withMax('assistantMessages as last_at', 'created_at')
+            ->orderByDesc('last_at')->get();
+
+        $person = $people->firstWhere('id', (int) $request->query('usuario')) ?? $people->first();
+        $messages = $person
+            ? AssistantMessage::where('user_id', $person->id)->latest('id')->limit(300)->get()->reverse()->values()
+            : collect();
+
+        return view('admin.assistant.team', [
+            'people' => $people,
+            'person' => $person,
+            'messages' => $messages->map(fn ($m) => $this->present($m) + ['date' => $m->created_at?->translatedFormat('l j \d\e F'), 'hidden' => (bool) $m->hidden_at, 'intent' => $m->intent]),
+        ]);
     }
 
     private function run(Request $request, string $userText, \Closure $action)

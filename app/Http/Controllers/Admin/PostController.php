@@ -36,7 +36,7 @@ class PostController extends Controller
 
     public function create(Request $request)
     {
-        return view('admin.posts.form', $this->formData(new Post(['type' => 'foto', 'branch_id' => $request->user()->branch_id]), $request));
+        return view('admin.posts.form', $this->formData(new Post(['type' => 'foto', 'branch_id' => $request->user()->branch_id, 'product_id' => $request->integer('producto') ?: null]), $request));
     }
 
     public function store(Request $request)

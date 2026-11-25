@@ -78,6 +78,31 @@ class Assistant
         'comentarios' => 'moderar comentarios',
     ];
 
+    /** Pantalla para hacer lo mismo a mano (ruta, permiso, texto del botón): el asistente ayuda, pero nunca es el único camino. */
+    private const MANUAL = [
+        'nuevo_producto' => ['admin.stock.ingresar', 'stock.adjust', '✋ Hacerlo a mano: Ingresar calzado'],
+        'entrada' => ['admin.stock.ingresar', 'stock.adjust', '✋ Hacerlo a mano: Ingresar calzado'],
+        'salida' => ['admin.stock.index', 'stock.view', '✋ Hacerlo a mano en Stock'],
+        'consulta' => ['admin.stock.index', 'stock.view', '✋ Buscar a mano en Stock'],
+        'venta' => ['admin.ventas.create', 'sales.create', '✋ Hacerlo a mano: Nueva venta'],
+        'reporte' => ['admin.ventas.index', 'sales.view', '✋ Ver las ventas a mano'],
+        'publicar' => ['admin.publicaciones.create', 'posts.manage', '✋ Hacerlo a mano: Nueva publicación'],
+        'traspaso' => ['admin.traspasos.create', 'stock.transfer', '✋ Hacerlo a mano: Nuevo traspaso'],
+        'nuevo_cliente' => ['admin.clientes.create', 'customers.view', '✋ Hacerlo a mano: Nuevo cliente'],
+        'ficha' => ['admin.clientes.index', 'customers.view', '✋ Buscar el cliente a mano'],
+        'nota' => ['admin.clientes.index', 'customers.view', '✋ Abrir la ficha del cliente'],
+        'tarea' => ['admin.crm', 'customers.view', '✋ Hacerlo a mano en Seguimientos'],
+        'tareas' => ['admin.crm', 'customers.view', '✋ Ver los seguimientos'],
+        'tarea_hecha' => ['admin.crm', 'customers.view', '✋ Hacerlo a mano en Seguimientos'],
+        'cliente_crm' => ['admin.clientes.index', 'customers.view', '✋ Abrir la ficha del cliente'],
+        'precio' => ['admin.productos.index', 'products.manage', '✋ Cambiarlo a mano en Productos'],
+        'estado_producto' => ['admin.productos.index', 'products.manage', '✋ Hacerlo a mano en Productos'],
+        'nueva_clase' => ['admin.categorias.create', 'products.manage', '✋ Hacerlo a mano: Nueva clase'],
+        'nuevo_usuario' => ['admin.usuarios.create', 'users.manage', '✋ Hacerlo a mano: Nuevo usuario'],
+        'leads' => ['admin.leads.index', 'leads.manage', '✋ Ver las consultas de WhatsApp'],
+        'comentarios' => ['admin.comentarios.index', 'comments.moderate', '✋ Ver los comentarios'],
+    ];
+
     /** Órdenes que trabajan sobre un producto que ya existe. */
     private const PRODUCT_INTENTS = ['entrada', 'salida', 'publicar', 'consulta', 'venta', 'precio', 'estado_producto', 'traspaso'];
 
@@ -115,9 +140,14 @@ class Assistant
         $p = new Parser($text);
         $step = $this->state['step'] ?? null;
 
-        // "no" a "¿a nombre de quién?" significa sin cliente, no cancelar
-        $answeringCustomer = $step === 'collect' && ($this->state['ask'] ?? null) === 'customer' && ! $p->says('/\b(cancela|anula|olvida)/');
-        if ($step && $p->isNo() && ! $answeringCustomer) {
+        // "hola", "gracias"… no son una orden ni una respuesta: no deben mover nada
+        if ($p->isGreeting()) {
+            return $step ? $this->next('👋 Seguimos con lo que estábamos. ') : $this->hello($p);
+        }
+
+        // "no" a "¿a nombre de quién?" o a "¿cuál es el código?" significa "no hay", no cancelar
+        $answeringNone = $step === 'collect' && in_array($this->state['ask'] ?? null, ['customer', 'code'], true) && ! $p->says('/\b(cancela|anula|olvida)/');
+        if ($step && $p->isNo() && ! $answeringNone) {
             return $this->cancel();
         }
         $intent = $p->intent();
@@ -144,9 +174,29 @@ class Assistant
             && ($intent !== 'entrada' || ! $current);   // "agrega…" mientras se pregunta algo no es otra orden
 
         if ($step === 'collect' && $current && ! $interrupts) {
-            $this->fill($p, $this->state['ask'] ?? null);
+            $ask = $this->state['ask'] ?? null;
+            // "¿cuántos hay del MP-100?" en medio de otra cosa es una pregunta, no la respuesta a lo que se preguntó
+            if ($intent === 'consulta' && $p->says('/\?|^\W*(?:cuant[oa]s?|hay|tienes|tenemos|quedan?|existe|cuanto)\b/') && $this->user->can('stock.view')
+                && ($this->findProduct($p)['product'] ?? null)) {
+                return $this->sideQuery($text);
+            }
+            $before = $this->state['data'];
+            $this->fill($p, $ask);
+            $changed = $this->state['data'] != $before;
+            // Una consulta de stock en medio de otra cosa se responde sin perder lo que se estaba haciendo
+            if (! $changed && $intent === 'consulta' && $this->user->can('stock.view') && ($p->code() || ($this->findProduct($p)['product'] ?? null))) {
+                return $this->sideQuery($text);
+            }
+            if ($this->answered($ask, $before, $changed)) {
+                $this->state['misses'] = 0;
 
-            return $this->next();
+                return $this->next();
+            }
+            $this->state['misses'] = ($this->state['misses'] ?? 0) + 1;
+
+            return $this->next(($this->state['misses'] > 1
+                ? 'Sigo sin entender 😅. Puedes hacerlo a mano con el botón ✋ de abajo, o decir «cancelar». '
+                : 'No entendí esa respuesta 🤔. ').($ask === 'code' ? 'Un código lleva números (ej.: CH-210); si no tiene, di «sin código». ' : ''));
         }
 
         // Orden nueva (las fotos adjuntas se conservan)
@@ -157,7 +207,11 @@ class Assistant
             return $this->help();
         }
         if (! $intent) {
-            $intent = ($p->code() || $this->findProduct($p)['product'] ?? null) ? 'consulta' : null;
+            $intent = ($p->code() || $this->findProduct($p, true)['product'] ?? null) ? 'consulta' : null;
+        }
+        // "botín negro talla 40" = ¿cuántos botines negros talla 40 hay?
+        if (! $intent && $p->category() && ($p->tallas() || $p->colors())) {
+            $intent = 'consulta';
         }
         if (! $intent && $this->user->can('customers.view') && ($p->phone() || ($this->findCustomer($p)['customer'] ?? null))) {
             $intent = 'ficha';
@@ -169,7 +223,7 @@ class Assistant
         // "Llegó el botín X…" de un producto que no existe = producto nuevo
         if ($intent === 'entrada') {
             $found = $this->findProduct($p);
-            if (! $found['product'] && ! $found['options'] && ($p->productName() || ($p->code() && ! Product::where('code', $p->code())->exists() && $p->price()))) {
+            if (! $found['product'] && ! $found['options'] && ($p->productName() || $p->says('/\bnuev[oa]s?\b/') || ($p->code() && ! Product::where('code', $p->code())->exists() && $p->price()))) {
                 $intent = 'nuevo_producto';
             }
         }
@@ -182,6 +236,27 @@ class Assistant
         $this->fill($p, null);
 
         return $this->next();
+    }
+
+    /** ¿La respuesta llenó el dato que se estaba preguntando? (si no, se avisa en vez de repetir la pregunta en silencio) */
+    private function answered(?string $ask, array $before, bool $changed): bool
+    {
+        $d = $this->state['data'];
+        $keys = [
+            'name' => ['name'], 'category' => ['category_id'], 'code' => ['code'], 'price' => ['price'],
+            'colors' => ['colors_set', 'colors'], 'tallas' => ['tallas_set', 'tallas'], 'qty_each' => ['qty_each'], 'qty' => ['qty'],
+            'branches' => ['branches'], 'product' => ['product_id', 'options', 'missing_code'], 'layout' => ['layout'],
+        ][$ask] ?? null;
+        if (! $keys) {
+            return $changed;
+        }
+        foreach ($keys as $k) {
+            if (array_key_exists($k, $d) && (! array_key_exists($k, $before) || $before[$k] !== $d[$k])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function cancel(): array
@@ -205,7 +280,7 @@ class Assistant
 
         // Producto existente
         if (in_array($intent, self::PRODUCT_INTENTS, true)) {
-            $found = $this->findProduct($p, $ask === 'product');
+            $found = $this->findProduct($p, $ask === 'product' || $ask === null);
             if ($found['product']) {
                 $d['product_id'] = $found['product']->id;
                 unset($d['options']);
@@ -224,27 +299,41 @@ class Assistant
         }
 
         if ($intent === 'nuevo_producto') {
-            $name = $p->productName() ?? ($ask === 'name' ? Parser::title(trim($p->t, ' .,')) : null);
+            $name = $p->productName();
+            if (! $name && $ask === 'name') {
+                $answer = trim($p->t, ' .,¿?!¡');
+                $name = ! $p->saysNone() && ! Parser::isGenericName($answer) && mb_strlen($answer) <= 60 ? Parser::title($answer) : null;
+            }
             if ($name) {
                 $d['name'] = $name;
             }
-            if ($cat = $p->category()) {
+            // La clase general ("calzado") no basta si tiene clases: se pregunta cuál (salvo que sea la respuesta a esa pregunta)
+            if (($cat = $p->category()) && ($ask === 'category' || $cat->parent_id || ! $cat->children()->where('is_active', true)->exists())) {
                 $d['category_id'] = $cat->id;
             }
             $code = $p->code();
             if ($code === null && $ask === 'code') {
-                $code = $p->says('/\b(no tiene|ninguno|sin|no hay)\b/') ? '' : $p->bareCode();
+                // Un código siempre lleva números: "negro" o "botín" no son un código
+                $code = $p->saysNone() || $p->says('/\b(no tiene|ninguno|sin|no hay|no se)\b/') ? '' : (preg_match('/\d/', $p->a) ? $p->bareCode() : null);
             }
             if ($code !== null) {
                 $d['code'] = $code;
             }
-            if (($price = $p->price() ?? ($ask === 'price' ? $p->firstNumber() : null)) !== null) {
+            $price = $p->price();
+            if ($price === null && $ask === 'price' && ! $p->looksLikeCode()) {
+                $n = $p->firstNumber();
+                $codeDigits = preg_replace('/\D+/', '', (string) ($d['code'] ?? ''));
+                // El número del código no es el precio ("3020" del modelo 3020)
+                $price = $n !== null && $n > 0 && $n <= 50000 && ($codeDigits === '' || $codeDigits !== (string) (int) $n) ? $n : null;
+            }
+            if ($price !== null) {
                 $d['price'] = $price;
             }
             if ($m = $p->material()) {
                 $d['material'] = $m;
             }
-            if (($q = $p->quantityEach() ?? ($ask === 'qty_each' ? $p->firstNumber() : null)) !== null) {
+            $q = $p->quantityEach() ?? ($ask === 'qty_each' && ! $p->looksLikeCode() ? $p->firstNumber() : null);
+            if ($q !== null && $q >= 0 && $q <= 999) {
                 $d['qty_each'] = (int) $q;
             }
             if ($p->wantsPublish()) {
@@ -275,7 +364,8 @@ class Assistant
         // Colores y tallas (respuestas cortas cuando se están preguntando)
         $colors = $p->colors();
         if (! $colors && $ask === 'colors') {
-            $colors = $p->says('/\b(sin color|ninguno|no tiene|un solo color|unico)\b/') ? ['-'] : $p->bareList()->map(fn ($c) => Str::ucfirst($c))->all();
+            // Solo palabras que pueden ser colores: "450" o "precio 380" no son colores
+            $colors = $p->says('/\b(sin color|ninguno|no tiene|un solo color|unico)\b/') ? ['-'] : ($p->bareColors() ?? []);
         }
         if ($colors) {
             $d['colors'] = $colors === ['-'] ? [] : $colors;
@@ -356,9 +446,23 @@ class Assistant
             return $this->ask('code', $prefix.'¿Cuál es el **código** del modelo? (ej.: CH-210, o di «sin código»)');
         }
         if ($d['code'] !== '' && ($other = Product::where('code', $d['code'])->first())) {
-            $this->state = [];
+            // No es un modelo nuevo: se sigue como entrada de pares de ese modelo, con lo que ya se dijo
+            $scoped = $this->user->scopedBranchId();
+            if (! $this->user->can('stock.adjust') || ($scoped && $this->user->cannot('products.manage') && ! $other->branches()->where('branches.id', $scoped)->exists())) {
+                $this->state = [];
 
-            return $this->reply("Ya existe un producto con el código **{$d['code']}**: *{$other->name}*. Si llegaron más pares, dime por ejemplo: «entrada de 3 pares del {$d['code']} talla 40 negro».");
+                return $this->reply("Ya existe un producto con el código **{$d['code']}**: *{$other->name}*.");
+            }
+            $this->state['intent'] = 'entrada';
+            $this->state['data'] = array_filter([
+                'product_id' => $other->id,
+                'colors' => $d['colors'] ?? null,
+                'tallas' => $d['tallas'] ?? null,
+                'qty' => isset($d['qty_each']) && $d['qty_each'] > 0 ? $d['qty_each'] : null,
+                'branches' => $d['branches'] ?? null,
+            ], fn ($v) => $v !== null && $v !== []);
+
+            return $this->next($prefix."El código **{$d['code']}** ya es de *{$other->name}*, así que lo registro como **entrada de pares** de ese modelo. ");
         }
         if (! isset($d['price'])) {
             return $this->ask('price', $prefix.'¿Cuál es el **precio** de venta en Bs.?');
@@ -645,13 +749,24 @@ class Assistant
         if (! $product) {
             $category = Category::find($d['category_id']);
             $ids = $category->descendantIds();
-            $products = Product::whereIn('category_id', $ids)->when($scoped, fn ($q) => $q->inBranch($scoped))->orderBy('name')->limit(25)->get();
-            if ($products->isEmpty()) {
-                return $this->reply("No hay productos de **{$category->name}**{$note}.", meta: ['action' => 'consulta']);
-            }
-            $rows = $products->map(fn ($pr) => [$pr->name.($pr->code ? " ({$pr->code})" : ''), ...$branches->map(fn ($b) => (string) $pr->stockInBranch($b->id))->all()])->all();
+            $tallas = $d['tallas'] ?? [];
+            $colors = collect($d['colors'] ?? [])->map(fn ($c) => Parser::fold($c));
+            $products = Product::whereIn('category_id', $ids)->when($scoped, fn ($q) => $q->inBranch($scoped))
+                ->with('variants.attributeValues.attribute', 'variants.stocks')->orderBy('name')->limit(60)->get();
+            $filter = trim(($tallas ? 'talla '.implode(', ', $tallas).' ' : '').($colors->isNotEmpty() ? implode(', ', $d['colors']) : ''));
+            $title = "**{$category->name}**".($filter ? " — {$filter}" : '');
+            $rows = $products->map(function ($pr) use ($branches, $tallas, $colors) {
+                $vs = $pr->variants->filter(fn ($v) => (! $tallas || in_array($v->valueOf('talla'), $tallas, true))
+                    && ($colors->isEmpty() || $colors->contains(Parser::fold((string) $v->valueOf('color')))));
+                $cells = $branches->map(fn ($b) => (int) $vs->sum(fn ($v) => $v->stocks->firstWhere('branch_id', $b->id)->quantity ?? 0));
 
-            return $this->reply("Stock de **{$category->name}**{$note}:", table: [['Producto', ...$branches->map(fn ($b) => self::short($b))->all()], $rows], meta: ['action' => 'consulta']);
+                return ['row' => [$pr->name.($pr->code ? " ({$pr->code})" : ''), ...$cells->map(fn ($n) => (string) $n)->all()], 'sum' => $cells->sum()];
+            })->when($tallas || $colors->isNotEmpty(), fn ($c) => $c->where('sum', '>', 0))->take(25);
+            if ($rows->isEmpty()) {
+                return $this->reply("No hay {$title}{$note}. 😕", meta: ['action' => 'consulta']);
+            }
+
+            return $this->reply("Stock de {$title}{$note}:", table: [['Producto', ...$branches->map(fn ($b) => self::short($b))->all()], $rows->pluck('row')->values()->all()], meta: ['action' => 'consulta']);
         }
 
         $product->load('variants.attributeValues.attribute', 'variants.stocks');
@@ -723,7 +838,8 @@ class Assistant
         $res = ['product' => null, 'options' => [], 'missing_code' => null];
 
         $code = $p->code();
-        if ($code === null && $answering && preg_match('/\d/', $p->a) && ! preg_match('/\s/', trim($p->a))) {
+        // Una sola palabra con números ("3020") también puede ser un código (si se pregunta el producto o es un mensaje suelto)
+        if ($code === null && $answering && preg_match('/\d/', $p->a) && ! preg_match('/\s/', trim($p->a)) && mb_strlen(trim($p->a)) >= 3) {
             $code = Parser::normalizeCode($p->t);
         }
         if ($code) {
@@ -734,6 +850,16 @@ class Assistant
                 return $res;
             }
             $res['missing_code'] = $code;
+        }
+        // Códigos solo de números ("entrada del 3020"): valen únicamente si ese código existe
+        if (! $code && preg_match_all('/\b(?:del|el|al|modelo|codigo|cod|nro|numero)\s+(\d{3,6})\b(?!\s*(?:pares|par|bs|bolivianos))/', $p->a, $nums)) {
+            foreach ($nums[1] as $n) {
+                if ($id = (clone $base)->where('code', $n)->value('id')) {
+                    $res['product'] = Product::find($id);
+
+                    return $res;
+                }
+            }
         }
 
         $words = collect(preg_split('/[^a-z0-9]+/', $p->a))->filter(fn ($w) => mb_strlen($w) >= 3)->map(fn ($w) => Parser::singular($w))->unique();
@@ -877,9 +1003,34 @@ class Assistant
             ."\n\nSi falta un dato te lo pregunto, y **nada se guarda sin que confirmes**. Para cancelar di «cancelar».");
     }
 
+    private function hello(Parser $p): array
+    {
+        $links = collect(['entrada', 'venta', 'publicar', 'consulta'])->flatMap(fn ($i) => $this->manualLinks($i))
+            ->map(fn ($l) => [preg_replace('/^✋ (Hacerlo a mano: |Hacerlo a mano en |Buscar a mano en )?/u', '✋ ', $l[0]), $l[1]])->unique(1)->values()->all();
+        $text = $p->says('/gracias/') ? '¡De nada! 😊 ¿Algo más?' : (
+            $p->says('/\b(chau|chao|adios|hasta luego)\b/') ? '¡Hasta luego! 👋' : "¡Hola, {$this->user->firstName()}! 👋 ¿Qué hacemos? Dime por ejemplo «llegaron 5 pares del CH-210 talla 40 negro» o «¿hay el CH-210 en 41?». También puedes hacerlo tú mismo con los botones:");
+
+        return $this->reply($text, links: $links);
+    }
+
+    /** Responde una consulta de stock sin perder la orden que se estaba armando. */
+    private function sideQuery(string $text): array
+    {
+        $answer = (new self($this->user))->handle($text);
+        $question = $this->next();
+
+        return ['text' => $answer['text']."\n\n👉 Ahora sigamos con lo anterior: ".$question['text'], 'table' => $answer['table']] + $question;
+    }
+
     private function notUnderstood(): array
     {
-        return $this->reply("No te entendí 🤔. Prueba así:\n• ".implode("\n• ", $this->examples()));
+        $manual = collect(['entrada', 'venta', 'publicar', 'consulta', 'nuevo_cliente'])
+            ->flatMap(fn ($i) => $this->manualLinks($i))
+            ->map(fn ($l) => [preg_replace('/^✋ (Hacerlo a mano: |Hacerlo a mano en |Buscar a mano en )?/u', '✋ ', $l[0]), $l[1]])
+            ->unique(1)->values()->all();
+
+        return $this->reply("No te entendí 🤔. Prueba así:\n• ".implode("\n• ", $this->examples())
+            .($manual ? "\n\nO hazlo tú mismo con los botones de abajo 👇" : ''), links: $manual);
     }
 
     // =================================================================== respuestas
@@ -889,7 +1040,7 @@ class Assistant
         $this->state['step'] = 'collect';
         $this->state['ask'] = $field;
 
-        return $this->reply($text);
+        return $this->reply($text, links: $this->manualLinks());
     }
 
     private function confirmCard(string $text, array $rows, array $headers = ['Dato', 'Valor']): array
@@ -897,7 +1048,20 @@ class Assistant
         $this->state['step'] = 'confirm';
         $this->state['ask'] = null;
 
-        return $this->reply($text."\n\n¿Lo guardo? Puedes decir **sí**, **no** o corregir algo.", table: [$headers, $rows], confirm: true);
+        return $this->reply($text."\n\n¿Lo guardo? Puedes decir **sí**, **no** o corregir algo.", table: [$headers, $rows], links: $this->manualLinks(), confirm: true);
+    }
+
+    /** Botón a la pantalla manual de la orden en curso (si el rol puede usarla). */
+    private function manualLinks(?string $intent = null): array
+    {
+        $intent ??= $this->state['intent'] ?? null;
+        [$route, $perm, $label] = self::MANUAL[$intent] ?? [null, null, null];
+        if (! $route || ! $this->user->can($perm)) {
+            return [];
+        }
+        $params = $route === 'admin.stock.ingresar' && ! empty($this->state['data']['product_id']) ? ['producto' => $this->state['data']['product_id']] : [];
+
+        return [[$label, route($route, $params)]];
     }
 
     private function reply(string $text, ?array $table = null, array $links = [], bool $confirm = false, array $meta = []): array
