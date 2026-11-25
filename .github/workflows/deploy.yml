@@ -220,8 +220,18 @@ jobs:
         if: env.FTP_SERVER != ''
         env:
           SITE_URL: ${{ vars.SITE_URL }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |
           URL="${SITE_URL:-https://radawescalzadosbrasileros.com}"
-          CODE=$(curl -s -o /dev/null -w '%{http_code}' "$URL/")
-          echo "Portada: $CODE"
-          test "$CODE" = "200"
+          FAIL=0
+          for P in / /sitemap.xml /catalogo.xml /admin/login /js/editor/photo-editor.js /js/editor/video-editor.js /js/editor/media-uploader.js; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' "$URL$P")
+            echo "$P → $CODE"
+            if [ "$CODE" != "200" ]; then echo "::error::$P respondió $CODE"; FAIL=1; fi
+          done
+          # Límite de subida real del servidor (videos del editor)
+          STATUS=$(curl -sS -X POST -H "X-Deploy-Token: $DEPLOY_TOKEN" "$URL/_deploy/estado" || true)
+          echo "Servidor: $STATUS"
+          MB=$(echo "$STATUS" | php -r '$j = json_decode(stream_get_contents(STDIN)); echo $j->video_mb ?? "?";')
+          echo "::notice::Videos: el servidor acepta hasta $MB MB por subida"
+          exit $FAIL

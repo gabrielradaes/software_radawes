@@ -36,6 +36,10 @@ class DeployController extends Controller
             'vendor_hash' => is_file($file) ? trim(file_get_contents($file)) : null,
             'php' => PHP_VERSION,
             'zip' => class_exists(\ZipArchive::class),
+            // Lo que el servidor deja subir (videos del editor): upload_max_filesize / post_max_size
+            'video_mb' => \App\Support\VideoUpload::maxMb(),
+            'upload_max' => ini_get('upload_max_filesize'),
+            'post_max' => ini_get('post_max_size'),
         ]);
     }
 
