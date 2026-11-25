@@ -209,6 +209,26 @@ class EquipoActividadTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors('body');
     }
 
+    public function test_fotos_y_videos_de_tiktok_y_facebook_se_muestran_en_la_pagina(): void
+    {
+        $this->assertSame('https://www.tiktok.com/embed/v2/7424999674584583430', video_embed_url('https://www.tiktok.com/@radawes/photo/7424999674584583430'));
+        $this->assertSame('https://www.tiktok.com/embed/v2/7642780384052137236', video_embed_url('https://www.tiktok.com/@radawes/video/7642780384052137236'));
+        $this->assertStringStartsWith('https://www.facebook.com/plugins/post.php', video_embed_url('https://www.facebook.com/photo/?fbid=122111024313466713'));
+        $this->assertStringStartsWith('https://www.facebook.com/plugins/video.php', video_embed_url('https://www.facebook.com/reel/2275198016647394'));
+
+        // Cada publicación de las redes tiene texto distinto en Comercio y en Calacoto
+        foreach (require database_path('data/redes-sociales.php') as $item) {
+            $this->assertNotSame($item['comercio'][0], $item['calacoto'][0]);
+            $this->assertNotSame($item['comercio'][1], $item['calacoto'][1]);
+            foreach ($item['links'] as $url) {
+                $this->assertNotNull(video_embed_url($url), $url);
+            }
+            foreach (['comercio', 'calacoto'] as $s) {
+                $this->assertTrue(Post::validBg($item[$s][2]), $s.' '.$item[$s][2]);
+            }
+        }
+    }
+
     // ------------------------------------------------------------ ayuda
 
     public function test_cada_pantalla_principal_tiene_su_ayuda(): void

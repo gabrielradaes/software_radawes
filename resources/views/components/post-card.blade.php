@@ -39,14 +39,18 @@
 
     {{-- Media (carrusel simple) --}}
     @if($post->media->count())
-        <div x-data="{ i: 0, n: {{ $post->media->count() }} }" class="relative aspect-square bg-brand-100 overflow-hidden">
+        @php
+            // TikTok y Facebook se ven verticales (video + texto): cuadro alto en vez de cuadrado
+            $social = $post->media->contains(fn ($m) => $m->type === 'video' && ! $m->isLocalVideo() && preg_match('~tiktok\.com|facebook\.com|fb\.watch~i', $m->path));
+        @endphp
+        <div x-data="{ i: 0, n: {{ $post->media->count() }} }" class="relative {{ $social ? 'h-[min(78vh,740px)]' : 'aspect-square' }} bg-brand-100 overflow-hidden">
             @foreach($post->media as $k => $m)
                 @if($m->isLocalVideo())
                     <div x-show="i === {{ $k }}" x-cloak="{{ $k ? 'true' : '' }}" class="absolute inset-0 bg-black">
                         <video src="{{ $m->url() }}" @if($m->posterUrl()) poster="{{ $m->posterUrl() }}" @endif controls playsinline preload="metadata" class="w-full h-full object-contain"></video>
                     </div>
                 @elseif($m->type === 'video' && ($embed = video_embed_url($m->path)))
-                    <div x-show="i === {{ $k }}" x-cloak="{{ $k ? 'true' : '' }}" class="absolute inset-0 bg-black">
+                    <div x-show="i === {{ $k }}" x-cloak="{{ $k ? 'true' : '' }}" class="absolute inset-0 bg-white">
                         <iframe src="{{ $embed }}" class="w-full h-full" style="border:0" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>
                     </div>
                 @elseif($m->type !== 'video')

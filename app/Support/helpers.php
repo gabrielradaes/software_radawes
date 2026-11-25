@@ -30,13 +30,17 @@ if (! function_exists('video_embed_url')) {
         }
         $url = trim($url);
 
+        // Fotos y publicaciones de Facebook: se muestran con el complemento de publicaciones
+        if (preg_match('~facebook\.com/(photo|.*/photos/|.*/posts/|permalink\.php)|[?&]fbid=~i', $url) && ! preg_match('~/(reel|videos)/~i', $url)) {
+            return 'https://www.facebook.com/plugins/post.php?show_text=false&width=500&href='.rawurlencode($url);
+        }
         if (preg_match('~(facebook\.com|fb\.watch)~i', $url)) {
             return 'https://www.facebook.com/plugins/video.php?show_text=false&autoplay=false&href='.rawurlencode($url);
         }
         if (preg_match('~(?:youtube\.com/(?:watch\?v=|shorts/|embed/)|youtu\.be/)([A-Za-z0-9_-]{6,})~i', $url, $m)) {
             return 'https://www.youtube.com/embed/'.$m[1];
         }
-        if (preg_match('~tiktok\.com/.*/video/(\d+)~i', $url, $m)) {
+        if (preg_match('~tiktok\.com/.*/(?:video|photo)/(\d+)~i', $url, $m)) {
             return 'https://www.tiktok.com/embed/v2/'.$m[1];
         }
 
