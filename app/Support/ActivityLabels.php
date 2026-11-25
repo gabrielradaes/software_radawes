@@ -35,6 +35,10 @@ class ActivityLabels
         // Stock
         'admin.stock.move' => 'Movió stock',
         'admin.stock.ingresar.store' => 'Ingresó calzado al stock',
+        'admin.asistente.ensenar.palabra' => 'Le enseñó una palabra al asistente',
+        'admin.asistente.ensenar.frase' => 'Le enseñó una frase al asistente',
+        'admin.asistente.ensenar.palabra.quitar' => 'Quitó una palabra del asistente',
+        'admin.asistente.ensenar.frase.quitar' => 'Quitó una frase del asistente',
         'admin.compras.store' => 'Registró una compra al proveedor',
         'admin.proveedores.store' => 'Agregó un proveedor',
         'admin.proveedores.update' => 'Editó un proveedor',

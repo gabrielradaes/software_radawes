@@ -12,7 +12,8 @@
     $user = auth()->user();
     $nav = [
         ['Panel', route('admin.dashboard'), 'admin.dashboard', null, '📊'],
-        ['Asistente', route('admin.asistente'), 'admin.asistente*', null, '🎙️'],
+        ['Asistente', route('admin.asistente'), 'admin.asistente|admin.asistente.equipo', null, '🎙️'],
+        ['Enseñar al asistente', route('admin.asistente.ensenar'), 'admin.asistente.ensenar*', 'assistant.teach', '🎓'],
         ['Productos', route('admin.productos.index'), 'admin.productos.*', 'products.manage', '👞'],
         ['Categorías y clases', route('admin.categorias.index'), 'admin.categorias.*', 'products.manage', '🗂️'],
         ['Stock', route('admin.stock.index'), 'admin.stock.*', 'stock.view', '📦'],

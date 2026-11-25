@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Assistant\Assistant;
 use App\Http\Controllers\Controller;
+use App\Models\AssistantExample;
 use App\Models\AssistantMessage;
 use App\Models\Role;
 use App\Models\User;
@@ -54,6 +55,29 @@ class AssistantController extends Controller
     public function confirm(Request $request)
     {
         return $this->run($request, 'Sí, confirmo', fn (Assistant $a) => $a->execute());
+    }
+
+    /**
+     * «¿Qué querías hacer?»: la persona elige la acción de un mensaje que no se entendió.
+     * La frase queda guardada como ejemplo (el asistente aprende) y se atiende con esa acción.
+     */
+    public function learn(Request $request)
+    {
+        $assistant = new Assistant($request->user(), $request->session()->get(self::KEY));
+        $data = $request->validate(['intent' => ['required', 'string', 'in:'.implode(',', array_column($assistant->choices(), 1))]]);
+        $last = AssistantMessage::where('user_id', $request->user()->id)->where('role', 'user')->whereNull('hidden_at')->latest('id')->first();
+        abort_unless($last && mb_strlen($last->text) >= 3, 422, 'No hay un mensaje para enseñar.');
+
+        AssistantExample::firstOrCreate(['folded' => mb_substr(\App\Assistant\Parser::fold(trim($last->text)), 0, 300), 'intent' => $data['intent']],
+            ['text' => mb_substr($last->text, 0, 300), 'source' => 'boton', 'user_id' => $request->user()->id]);
+        $label = Assistant::CHOICES[$data['intent']];
+
+        return $this->run($request, "👉 Quería: {$label}", function (Assistant $a) use ($last, $data) {
+            $reply = $a->handle($last->text, [], $data['intent']);
+            $reply['text'] = 'Gracias, ya lo aprendí 🎓. '.$reply['text'];
+
+            return $reply;
+        });
     }
 
     public function cancel(Request $request)
@@ -132,6 +156,7 @@ class AssistantController extends Controller
             'table' => $meta['table'] ?? null,
             'links' => $meta['links'] ?? [],
             'confirm' => (bool) ($meta['confirm'] ?? false),
+            'choices' => $meta['choices'] ?? [],
             'time' => $m->created_at?->format('H:i'),
         ];
     }

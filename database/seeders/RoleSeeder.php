@@ -33,6 +33,7 @@ class RoleSeeder extends Seeder
             ['name' => 'branches.manage', 'label' => 'Gestionar sucursales',    'group' => 'admin'],
             ['name' => 'records.delete',  'label' => 'Eliminar registros (productos, publicaciones, usuarios…)', 'group' => 'admin'],
             ['name' => 'activity.view',   'label' => 'Ver el historial de actividad del equipo', 'group' => 'admin'],
+            ['name' => 'assistant.teach', 'label' => 'Enseñar al asistente (palabras y frases)', 'group' => 'admin'],
         ];
 
         foreach ($permissions as $p) {
@@ -52,7 +53,7 @@ class RoleSeeder extends Seeder
                     'products.view', 'products.manage', 'posts.manage', 'comments.moderate',
                     'stock.view', 'stock.adjust', 'stock.transfer',
                     'sales.create', 'sales.view', 'sales.cancel', 'leads.manage', 'customers.view', 'customers.manage', 'reports.view',
-                    'activity.view',
+                    'activity.view', 'assistant.teach',
                 ],
             ],
             Role::EMPLEADO => [

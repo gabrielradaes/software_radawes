@@ -35,9 +35,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Asistente por voz/texto (cada orden se valida con los permisos del rol)
         Route::get('asistente', [Admin\AssistantController::class, 'index'])->name('asistente');
         Route::get('asistente/equipo', [Admin\AssistantController::class, 'team'])->middleware('can:activity.view')->name('asistente.equipo');
+        Route::middleware('can:assistant.teach')->group(function () {
+            Route::get('asistente/ensenar', [Admin\AssistantTeachController::class, 'index'])->name('asistente.ensenar');
+            Route::post('asistente/ensenar/palabras', [Admin\AssistantTeachController::class, 'storeWord'])->name('asistente.ensenar.palabra');
+            Route::post('asistente/ensenar/frases', [Admin\AssistantTeachController::class, 'storeExample'])->name('asistente.ensenar.frase');
+            Route::delete('asistente/ensenar/palabras/{word}', [Admin\AssistantTeachController::class, 'destroyWord'])->name('asistente.ensenar.palabra.quitar');
+            Route::delete('asistente/ensenar/frases/{example}', [Admin\AssistantTeachController::class, 'destroyExample'])->name('asistente.ensenar.frase.quitar');
+        });
         Route::middleware('throttle:60,1')->group(function () {
             Route::post('asistente/mensaje', [Admin\AssistantController::class, 'message'])->name('asistente.mensaje');
             Route::post('asistente/confirmar', [Admin\AssistantController::class, 'confirm'])->name('asistente.confirmar');
+            Route::post('asistente/aprender', [Admin\AssistantController::class, 'learn'])->name('asistente.aprender');
             Route::post('asistente/cancelar', [Admin\AssistantController::class, 'cancel'])->name('asistente.cancelar');
             Route::delete('asistente', [Admin\AssistantController::class, 'clear'])->name('asistente.limpiar');
         });

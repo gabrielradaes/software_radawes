@@ -148,6 +148,12 @@ class HelpTopics
             'Si no te entiende, toca el botón <b>✋ Hacerlo a mano</b> que aparece debajo de su respuesta: abre la pantalla para hacerlo tú mismo.',
             'Para ingresar calzados a mano: menú <b>Stock → ➕ Ingresar calzado</b>.',
         ]],
+        'admin.asistente.ensenar' => ['Enseñar al asistente', [
+            '<b>Probar una frase</b>: escribe algo como lo diría el equipo y mira qué entiende.',
+            '<b>Lo que no entendió</b>: elige qué quería hacer la persona y toca Enseñar. La próxima vez lo entiende.',
+            '<b>Palabras</b>: colores en portugués (preto = Negro), marcas, clases y sinónimos (depósito = stock).',
+            '<b>Frases de ejemplo</b>: 2 o 3 formas de pedir cada cosa bastan para que reconozca las parecidas.',
+        ]],
         'admin.asistente.equipo' => ['Chats del equipo', [
             'Aquí ves lo que cada persona le pidió al asistente y lo que respondió (solo lectura).',
             'Sirve para ver dónde se confunde y enseñarle al equipo a pedirlo mejor, o usar la pantalla manual.',

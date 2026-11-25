@@ -1,6 +1,7 @@
 @extends('admin.layouts.app')
 @section('title', 'Asistente')
 @section('actions')
+    @can('assistant.teach')<a href="{{ route('admin.asistente.ensenar') }}" class="text-sm text-amber-800 hover:text-amber-950 px-3 py-2 rounded-lg hover:bg-amber-100 font-semibold">🎓 Enseñar</a>@endcan
     @can('activity.view')<a href="{{ route('admin.asistente.equipo') }}" class="text-sm text-slate-600 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-200">👥 Chats del equipo</a>@endcan
     <form method="POST" action="{{ route('admin.asistente.limpiar') }}" onsubmit="return confirm('¿Empezar una conversación nueva? Lo que ya se registró en el sistema no cambia.')">
         @csrf @method('DELETE')
@@ -32,6 +33,15 @@
                     <template x-if="m.links && m.links.length">
                         <div class="mt-2 flex flex-wrap gap-2">
                             <template x-for="l in m.links"><a :href="l[1]" target="_blank" class="text-xs font-semibold bg-brand-50 text-brand-800 border border-brand-200 px-2.5 py-1 rounded-full hover:bg-brand-100" x-text="l[0]"></a></template>
+                        </div>
+                    </template>
+
+                    <template x-if="m.choices && m.choices.length && i === messages.length - 1">
+                        <div class="mt-3">
+                            <p class="text-xs font-semibold text-slate-500 mb-1.5">🎓 ¿Qué querías hacer?</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="c in m.choices"><button type="button" @click="learn(c)" :disabled="busy" class="text-sm bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-semibold px-3 py-1.5 rounded-full disabled:opacity-50" x-text="c[0]"></button></template>
+                            </div>
                         </div>
                     </template>
 
@@ -165,6 +175,13 @@ function asistente(initial, pending) {
             this.add({ role: 'user', html: shown.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])) + (text && this.files.length ? ' <span class="opacity-75">📷 ' + this.files.length + '</span>' : ''), time: '' });
             this.text = ''; this.base = ''; this.files = []; this.grow();
             await this.post(@js(route('admin.asistente.mensaje')), fd);
+        },
+
+        async learn(choice) {
+            this.add({ role: 'user', html: '👉 Quería: ' + choice[0], time: '' });
+            const fd = new FormData();
+            fd.append('intent', choice[1]);
+            await this.post(@js(route('admin.asistente.aprender')), fd);
         },
 
         async decide(action) {

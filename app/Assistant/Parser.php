@@ -78,10 +78,14 @@ class Parser
             (bool) preg_match('/\b(?:cuanto (?:vendimos|vendi|vendieron|se vendio|hemos vendido|llevamos)|ventas de(?:l)? (?:hoy|ayer|la semana|esta semana|el mes|este mes|mes)|reporte|resumen de ventas|(?:lo|los) mas vendidos?|como (?:van|vamos con) las ventas)\b/', $a) => 'reporte',
             (bool) preg_match('/\b(?:leads?|consultas de whatsapp|mensajes de whatsapp|quien(?:es)? (?:pregunto|preguntaron|escribio|escribieron))\b/', $a) => 'leads',
             (bool) preg_match('/\bcomentarios?\b/', $a) => 'comentarios',
+            (bool) preg_match('/\bcaja\b/', $a) || (bool) preg_match('/\b(?:gaste|gastamos|pague (?:el|la|los|las|un|una)|saque \d+)\b/', $a) => 'caja',
+            (bool) preg_match('/\b(?:aparta(?:r|lo|la|le|me)?|apartado|separa(?:r|lo|la|le|me)?|reserva(?:r|lo|la|le)?)\b/', $a) && ! preg_match('/\b(?:mis|los|ver|cuantos) apartados\b/', $a) => 'apartar',
             (bool) preg_match('/\b(?:traspasa(?:r)?|traspaso|transfiere|transferir)\b/', $a)
                 || (preg_match('/\b(?:envia(?:r)?|manda(?:r)?|pasa(?:r)?|mueve|mover|lleva(?:r)?)\b/', $a) && preg_match('/\b(?:a|al|para|hacia)\s+(?:la\s+)?(?:tienda\s+(?:de\s+)?)?(?:calacoto|comercio|el alto)\b/', $a) && count(array_filter($this->branches(), 'is_int')) >= 1) => 'traspaso',
             (bool) preg_match('/\b(?:cambia(?:r|le)?|sube(?:le)?|subir|baja(?:le)?|bajar|actualiza(?:r|le)?|modifica(?:r)?)\b[^.]*\bprecio\b|\bnuevo precio\b|\bprecio nuevo\b/', $a) => 'precio',
             (bool) preg_match('/\b(?:desactiva(?:r|lo|la)?|oculta(?:r|lo|la)?|activa(?:r|lo|la)?|reactiva(?:r|lo|la)?|muestralo|muestrala|vuelve a mostrar|ya no (?:vendemos|lo vendemos)|saca(?:lo|la)? de la (?:pagina|tienda|web))\b/', $a) => 'estado_producto',
+            // "publica: llegó colección nueva…" es una publicación, no un producto nuevo
+            (bool) preg_match('/^\W*(?:por favor\s+)?(?:publica(?:r|lo|la)?|postea(?:r|lo)?)\b|\b(?:haz|hacer|crea|crear|nueva|una|otra) publicacion\b|\bpublica(?:r)? (?:que|esto|diciendo|un texto|una foto|las fotos)\b/', $a) => 'publicar',
             (bool) preg_match('/\b(nuevo|nueva|registra(?:r|lo)?|crea(?:r|lo)?|da(?:r)? de alta|alta de)\b/', $a) && ! preg_match('/\b(?:vendi|vendio|vendimos|venta)\b/', $a) => 'nuevo_producto',
             (bool) preg_match('/\b(vendi|vendio|vendimos|vendieron|vendido|venta|se llevo|se llevaron|compro|compraron|cobra(?:r|le)?)\b/', $a) => 'venta',
             (bool) preg_match('/\b(salida|retira(?:r|ron)?|saca(?:r|ron)?|baja de|devolucion al proveedor)\b/', $a) => 'salida',
@@ -205,11 +209,13 @@ class Parser
                 $words[] = $w;
             }
             if ($words) {
-                return self::title($this->slice($m[1][1], mb_strlen(implode(' ', $words))));
+                $said = self::title($this->slice($m[1][1], mb_strlen(implode(' ', $words))));
+
+                return Lexicon::brandIn(self::fold($said)) ?? $said;   // con la ortografía ya registrada
             }
         }
 
-        return null;
+        return Lexicon::brandIn($this->a);   // marcas conocidas aunque no digan "marca"
     }
 
     /** Respuesta corta a "¿cuál es el código?": "es el CH 210" → CH-210 */
@@ -261,7 +267,11 @@ class Parser
         $found = [];
         $rest = $this->a;
         // Las cajas vienen de Brasil: "preto" (o dictado "es preto" → "expreto") es negro
-        foreach (self::ALIASES as $re => $color) {
+        $aliases = self::ALIASES;
+        foreach (Lexicon::colors() as $phrase => $color) {   // los que el equipo le enseñó
+            $aliases['/\b'.preg_quote($phrase, '/').'\b/'] = $color;
+        }
+        foreach ($aliases as $re => $color) {
             if (preg_match($re, $rest)) {
                 $found[] = $known->get(self::fold($color), $color);
                 $rest = preg_replace($re, ' ', $rest);
@@ -355,6 +365,9 @@ class Parser
     /** Clase/categoría: "botín", "mocasines", "zapato de vestir"… (prefiere subcategorías). */
     public function category(): ?Category
     {
+        if (($taught = Lexicon::classIn($this->a)) && ($c = Category::find($taught))) {
+            return $c;
+        }
         $words = collect(preg_split('/[^a-z0-9]+/', $this->a))->filter()->map(fn ($w) => self::singular($w));
         $best = null;
         $bestScore = 0;

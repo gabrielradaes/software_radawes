@@ -28,7 +28,7 @@ use Illuminate\Support\Str;
  */
 class Assistant
 {
-    use Skills\Crm, Skills\Sales, Skills\Admin;
+    use Skills\Crm, Skills\Sales, Skills\Admin, Skills\Ops;
 
     private const NEEDS = [
         'nuevo_producto' => 'products.manage',
@@ -52,6 +52,8 @@ class Assistant
         'nueva_clase' => 'products.manage',
         'nuevo_usuario' => 'users.manage',
         'comentarios' => 'comments.moderate',
+        'apartar' => 'sales.create',
+        'caja' => 'sales.create',
     ];
 
     private const LABELS = [
@@ -76,6 +78,8 @@ class Assistant
         'nueva_clase' => 'crear clases de calzado',
         'nuevo_usuario' => 'crear usuarios del panel',
         'comentarios' => 'moderar comentarios',
+        'apartar' => 'apartar pares para clientes',
+        'caja' => 'manejar la caja',
     ];
 
     /** Pantalla para hacer lo mismo a mano (ruta, permiso, texto del botón): el asistente ayuda, pero nunca es el único camino. */
@@ -101,10 +105,40 @@ class Assistant
         'nuevo_usuario' => ['admin.usuarios.create', 'users.manage', '✋ Hacerlo a mano: Nuevo usuario'],
         'leads' => ['admin.leads.index', 'leads.manage', '✋ Ver las consultas de WhatsApp'],
         'comentarios' => ['admin.comentarios.index', 'comments.moderate', '✋ Ver los comentarios'],
+        'apartar' => ['admin.apartados.create', 'sales.create', '✋ Hacerlo a mano: Nuevo apartado'],
+        'caja' => ['admin.caja', 'sales.create', '✋ Abrir la pantalla de Caja'],
+    ];
+
+    /** Botones de «¿Qué querías hacer?» cuando no entiende: al tocar uno, aprende la frase. */
+    public const CHOICES = [
+        'entrada' => '📦 Ingresar calzado',
+        'venta' => '🧾 Vender',
+        'consulta' => '🔎 Ver stock',
+        'publicar' => '📣 Publicar',
+        'apartar' => '📌 Apartar',
+        'caja' => '💵 Caja',
+        'salida' => '➖ Sacar del stock',
+        'traspaso' => '🔁 Traspaso',
+        'nuevo_cliente' => '🧑 Nuevo cliente',
+        'tarea' => '📅 Recordatorio',
+        'reporte' => '📊 Ver ventas',
+    ];
+
+    /** Todas las acciones que se le pueden enseñar con frases de ejemplo (pantalla «Enseñar al asistente»). */
+    public const TEACHABLE = self::CHOICES + [
+        'nuevo_producto' => '👞 Modelo nuevo',
+        'precio' => '💲 Cambiar precio',
+        'estado_producto' => '🙈 Ocultar o mostrar producto',
+        'nota' => '📝 Nota de cliente',
+        'ficha' => '🧑 Ver ficha de cliente',
+        'tareas' => '📅 Ver pendientes',
+        'tarea_hecha' => '✔ Marcar pendiente hecho',
+        'leads' => '🟢 Consultas de WhatsApp',
+        'comentarios' => '💬 Comentarios',
     ];
 
     /** Órdenes que trabajan sobre un producto que ya existe. */
-    private const PRODUCT_INTENTS = ['entrada', 'salida', 'publicar', 'consulta', 'venta', 'precio', 'estado_producto', 'traspaso'];
+    private const PRODUCT_INTENTS = ['entrada', 'salida', 'publicar', 'consulta', 'venta', 'precio', 'estado_producto', 'traspaso', 'apartar'];
 
     public array $state;
 
@@ -118,10 +152,13 @@ class Assistant
 
     // =================================================================== entrada
 
-    /** @param string[] $imagePaths fotos ya guardadas que llegaron con este mensaje */
-    public function handle(string $text, array $imagePaths = []): array
+    /**
+     * @param string[] $imagePaths fotos ya guardadas que llegaron con este mensaje
+     * @param string|null $forceIntent acción elegida con «¿Qué querías hacer?» (cuando no se entendió el mensaje)
+     */
+    public function handle(string $text, array $imagePaths = [], ?string $forceIntent = null): array
     {
-        $text = trim($text);
+        $text = Lexicon::rewrite(trim($text));   // sinónimos enseñados ("depósito" → "stock")
         if ($imagePaths) {
             $this->state['images'] = array_merge($this->state['images'] ?? [], $imagePaths);
         }
@@ -138,10 +175,13 @@ class Assistant
         }
 
         $p = new Parser($text);
+        if ($forceIntent) {
+            $this->state = ['images' => $this->state['images'] ?? []];
+        }
         $step = $this->state['step'] ?? null;
 
         // "hola", "gracias"… no son una orden ni una respuesta: no deben mover nada
-        if ($p->isGreeting()) {
+        if (! $forceIntent && $p->isGreeting()) {
             return $step ? $this->next('👋 Seguimos con lo que estábamos. ') : $this->hello($p);
         }
 
@@ -150,7 +190,7 @@ class Assistant
         if ($step && $p->isNo() && ! $answeringNone) {
             return $this->cancel();
         }
-        $intent = $p->intent();
+        $intent = $forceIntent ?? $this->learnedIntent($p, $p->intent(), (bool) $step);
         $otherOrder = $intent && $intent !== ($this->state['intent'] ?? null) && ! in_array($intent, ['consulta', 'entrada'], true);
 
         if ($step === 'confirm' && ! $otherOrder) {
@@ -256,6 +296,33 @@ class Assistant
         return $this->next();
     }
 
+    /**
+     * Frases que el equipo le enseñó: si el mensaje se parece mucho a una, manda esa acción;
+     * si las reglas no entendieron nada, basta con que se parezca bastante.
+     */
+    public function learnedIntent(Parser $p, ?string $ruleIntent, bool $midConversation): ?string
+    {
+        $learned = Lexicon::classify($p->a);
+        if (! $learned || ! isset(self::NEEDS[$learned['intent']])) {
+            return $ruleIntent;
+        }
+        if ($learned['score'] >= 0.85 && (! $midConversation || $learned['size'] >= 2)) {
+            return $learned['intent'];
+        }
+        if (! $ruleIntent && ! $midConversation && $learned['score'] >= 0.5) {
+            return $learned['intent'];
+        }
+
+        return $ruleIntent;
+    }
+
+    /** Acciones para «¿Qué querías hacer?» (solo las que el rol puede hacer). */
+    public function choices(): array
+    {
+        return collect(self::CHOICES)->filter(fn ($label, $intent) => $this->user->can(self::NEEDS[$intent]))
+            ->map(fn ($label, $intent) => [$label, $intent])->values()->all();
+    }
+
     /** Nombre por defecto si el modelo no tiene nombre: marca + código («Demócrata 596101-001»). */
     private function defaultName(array $d): ?string
     {
@@ -308,6 +375,7 @@ class Assistant
             'name' => ['name'], 'category' => ['category_id'], 'code' => ['code'], 'price' => ['price'],
             'colors' => ['colors_set', 'colors'], 'tallas' => ['tallas_set', 'tallas'], 'qty_each' => ['qty_each'], 'qty' => ['qty'],
             'branches' => ['branches'], 'product' => ['product_id', 'options', 'missing_code'], 'layout' => ['layout'],
+            'post_text' => ['post_text', 'product_id', 'options'], 'deposit' => ['deposit'], 'amount' => ['amount'], 'note' => ['note'],
         ][$ask] ?? null;
         if (! $keys) {
             return $changed;
@@ -412,7 +480,7 @@ class Assistant
             }
         } else {
             $q = $p->quantity() ?? $p->quantityEach() ?? (in_array($ask, ['qty'], true) ? $p->firstNumber() : null);
-            if ($q !== null && in_array($intent, ['entrada', 'salida', 'venta', 'traspaso'], true)) {
+            if ($q !== null && in_array($intent, ['entrada', 'salida', 'venta', 'traspaso', 'apartar'], true)) {
                 $d['qty'] = (int) $q;
             }
             // Si el código resulta nuevo, la marca y la clase ya dichas no se pierden
@@ -426,6 +494,18 @@ class Assistant
             }
             if ($intent === 'publicar' && ($layout = $p->layout())) {
                 $d['layout'] = $layout;
+            }
+            // Publicación libre (sin producto): texto y color de fondo
+            if ($intent === 'publicar') {
+                if ($bg = $this->postBg($p)) {
+                    $d['bg'] = $bg;
+                }
+                if (empty($d['product_id']) && empty($d['options']) && empty($d['missing_code'])) {
+                    $text = $ask === 'post_text' ? trim($p->t, ' "«»') : $this->postText($p);
+                    if ($text !== null && $text !== '' && ($ask === 'post_text' || ! $p->code())) {
+                        $d['post_text'] = $ask === 'post_text' ? (string) $this->postText(new Parser('publica: '.$text)) ?: $text : $text;
+                    }
+                }
             }
         }
 
@@ -479,6 +559,9 @@ class Assistant
                     ->map(fn ($pr, $i) => ($i + 1).'. '.$pr->name.($pr->code ? " ({$pr->code})" : ''))->implode("\n");
 
                 return $this->ask('product', $prefix."Encontré varios. ¿Cuál?\n".$list."\n\nResponde con el número o el código.");
+            }
+            if ($intent === 'publicar' && empty($d['product_id']) && empty($d['missing_code'])) {
+                return $this->nextFreePost($prefix);
             }
             if (empty($d['product_id']) && ! ($intent === 'consulta' && ! empty($d['category_id']))) {
                 $missing = $d['missing_code'] ?? null;
@@ -920,7 +1003,7 @@ class Assistant
             return match ($intent) {
                 'nuevo_producto' => $this->executeNew(),
                 'entrada', 'salida' => $this->executeMove(),
-                'publicar' => $this->executePublish(),
+                'publicar' => empty($this->state['data']['product_id']) ? $this->executeFreePost() : $this->executePublish(),
                 default => $this->{'execute'.Str::studly($intent)}(),
             };
         } catch (\RuntimeException $e) {
@@ -1085,7 +1168,10 @@ class Assistant
             $ex[] = '💲 «Cambia el precio del CH-210 a 480» · «oculta el CH-210» · «nueva clase Pantuflas»';
         }
         if ($this->user->can('posts.manage')) {
-            $ex[] = '📣 «Publica el CH-210 en carrusel» (puedes adjuntar fotos 📷)';
+            $ex[] = '📣 «Publica el CH-210 en carrusel» · «publica: llegó colección nueva, fondo rojo» (puedes adjuntar fotos 📷)';
+        }
+        if ($this->user->can('sales.create')) {
+            $ex[] = '📌 «Aparta el CH-210 talla 40 negro para Carlos, deja 100» · 💵 «abre la caja con 200» · «gasté 15 en pasaje» · «cierra la caja»';
         }
         if ($this->user->can('comments.moderate')) {
             $ex[] = '💬 «Últimos comentarios»';
@@ -1131,8 +1217,11 @@ class Assistant
             ->map(fn ($l) => [preg_replace('/^✋ (Hacerlo a mano: |Hacerlo a mano en |Buscar a mano en )?/u', '✋ ', $l[0]), $l[1]])
             ->unique(1)->values()->all();
 
-        return $this->reply("No te entendí 🤔. Prueba así:\n• ".implode("\n• ", $this->examples())
-            .($manual ? "\n\nO hazlo tú mismo con los botones de abajo 👇" : ''), links: $manual);
+        $choices = $this->choices();
+
+        return $this->reply('No te entendí 🤔'.($choices ? ' ¿Qué querías hacer? Toca una opción y **aprendo esa frase** para la próxima.' : '')
+            ."\n\nTambién puedes decirlo así:\n• ".implode("\n• ", array_slice($this->examples(), 0, 3))
+            .($manual ? "\n\nO hazlo tú mismo con los botones ✋ 👇" : ''), links: $manual, meta: $choices ? ['choices' => $choices] : []);
     }
 
     // =================================================================== respuestas
