@@ -80,7 +80,7 @@
                                     @if($r['stock'])<a href="{{ route('admin.stock.kardex', $r['stock']) }}" class="text-slate-500 hover:underline">Kardex</a>@endif
                                     @can('products.manage')
                                     <button type="submit" form="v-toggle-{{ $v->id }}" class="ml-2 text-slate-500 hover:underline">{{ $v->is_active ? 'Desactivar' : 'Activar' }}</button>
-                                    <button type="submit" form="v-del-{{ $v->id }}" class="ml-2 text-rose-600 hover:underline">Quitar</button>
+                                    @can('records.delete')<button type="submit" form="v-del-{{ $v->id }}" class="ml-2 text-rose-600 hover:underline">Quitar</button>@endcan
                                     @endcan
                                 </td>
                             </tr>
@@ -94,7 +94,7 @@
             </form>
             @foreach($rows as $r)
                 <form id="v-toggle-{{ $r['variant']->id }}" method="POST" action="{{ route('admin.variantes.update', $r['variant']) }}">@csrf @method('PATCH')</form>
-                <form id="v-del-{{ $r['variant']->id }}" method="POST" action="{{ route('admin.variantes.destroy', $r['variant']) }}" onsubmit="return confirmar('¿Quitar la variante {{ $r['variant']->sku }}?')">@csrf @method('DELETE')</form>
+                @can('records.delete')<form id="v-del-{{ $r['variant']->id }}" method="POST" action="{{ route('admin.variantes.destroy', $r['variant']) }}" onsubmit="return confirmar('¿Quitar la variante {{ $r['variant']->sku }}?')">@csrf @method('DELETE')</form>@endcan
             @endforeach
         @else
             <p class="px-5 py-10 text-center text-slate-400 text-sm">Este producto aún no tiene variantes. Genera las combinaciones a la izquierda.</p>

@@ -55,7 +55,9 @@
                     <a href="{{ route('feed.show', ['branch' => $p->branch, 'post' => $p]) }}" class="flex gap-3 bg-white/5 hover:bg-white/10 rounded-2xl p-3 ring-1 ring-white/10">
                         <div class="w-20 h-20 rounded-xl overflow-hidden bg-white/10 shrink-0 flex items-center justify-center">
                             @if($img = $p->media->firstWhere('type', 'imagen'))<img src="{{ $img->url() }}" class="w-full h-full object-cover">
-                            @elseif($p->media->firstWhere('type', 'video'))<span class="text-2xl">▶</span>@endif
+                            @elseif(($v = $p->media->firstWhere('type', 'video')) && $v->posterUrl())<span class="relative w-full h-full"><img src="{{ $v->posterUrl() }}" class="w-full h-full object-cover"><span class="absolute inset-0 flex items-center justify-center text-2xl text-white drop-shadow">▶</span></span>
+                            @elseif($v)<span class="text-2xl">▶</span>
+                            @elseif($cs = $p->colorStyle())<span class="w-full h-full" style="background: {{ $cs['bg'] }}"></span>@endif
                         </div>
                         <div class="min-w-0">
                             <p class="text-[11px] uppercase tracking-wider font-semibold" style="color: {{ $p->branch->color_accent }}">{{ $p->branch->brandName() }} · {{ $p->branch->city }}</p>

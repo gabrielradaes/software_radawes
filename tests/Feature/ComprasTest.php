@@ -62,8 +62,9 @@ class ComprasTest extends TestCase
         $this->assertSame(['450.00', '480.00'], $log->changes['Precio']);
         $this->assertSame([null, '260.00'], $log->changes['Costo']);
 
-        $this->actingAs($admin)->get('/admin/auditoria')->assertOk()->assertSee('Producto modificado: Botín Chelsea');
-        $this->actingAs($this->supervisor())->get('/admin/auditoria')->assertForbidden();
+        $this->actingAs($admin)->get('/admin/actividad')->assertOk()->assertSee('Producto modificado: Botín Chelsea');
+        // El supervisor ve el historial de su tienda, pero no lo que hizo el administrador
+        $this->actingAs($this->supervisor())->get('/admin/actividad')->assertOk()->assertDontSee('Producto modificado: Botín Chelsea');
     }
 
     public function test_ingreso_con_curva_crea_variantes_stock_kardex_y_costo(): void

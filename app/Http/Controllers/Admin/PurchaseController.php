@@ -180,6 +180,7 @@ class PurchaseController extends Controller
 
     public function destroyCurve(SizeCurve $curve)
     {
+        ensure_can_delete();
         $curve->delete();
 
         return back()->with('status', 'Curva eliminada.');

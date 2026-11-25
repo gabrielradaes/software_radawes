@@ -98,6 +98,9 @@ class CustomerController extends Controller
             ->merge($customer->sales->map(fn ($s) => ['at' => $s->sold_at, 'icon' => '🧾', 'title' => "Compra {$s->code} · ".money($s->total).($s->status === 'anulada' ? ' (anulada)' : ''), 'body' => $s->items->map(fn ($it) => $it->quantity.' × '.$it->variant->product->name.' '.$it->variant->label())->implode(', '), 'url' => route('admin.ventas.show', $s)]))
             ->merge($customer->whatsappLeads->map(fn ($l) => ['at' => $l->created_at, 'icon' => '🟢', 'title' => 'Consultó por WhatsApp · '.$l->status, 'body' => $l->product?->name ?? ($l->post?->title ?? 'Consulta general')]))
             ->merge($customer->comments->map(fn ($c) => ['at' => $c->created_at, 'icon' => '💬', 'title' => 'Comentó en '.($c->commentable?->title ?? $c->commentable?->name ?? 'la página'), 'body' => $c->body]))
+            // Lo que hizo en la página (ingresos, separados, avisos…); los comentarios ya están arriba
+            ->merge(\App\Models\AuditLog::where('customer_id', $customer->id)->where('description', 'not like', 'Comentó%')->latest('id')->take(50)->get()
+                ->map(fn ($a) => ['at' => $a->created_at, 'icon' => $a->icon(), 'title' => $a->description, 'body' => null]))
             ->sortByDesc('at')->values();
 
         $stats = [

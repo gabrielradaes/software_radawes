@@ -19,9 +19,10 @@
                     <td class="px-4 py-3 text-slate-600">{{ $u->branch?->name ?? 'Todas' }}</td>
                     <td class="px-4 py-3">{!! $u->is_active ? '<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Activo</span>' : '<span class="text-xs px-2 py-0.5 rounded-full bg-slate-200">Inactivo</span>' !!}</td>
                     <td class="px-4 py-3 text-right text-xs whitespace-nowrap">
+                        <a href="{{ route('admin.auditoria', ['usuario' => $u->id]) }}" class="text-brand-500 hover:underline mr-3">Actividad</a>
                         <a href="{{ route('admin.usuarios.edit', $u) }}" class="text-slate-600 hover:underline">Editar</a>
                         @if($u->id !== auth()->id())
-                            <form method="POST" action="{{ route('admin.usuarios.destroy', $u) }}" class="inline ml-3" onsubmit="return confirmar('¿Eliminar a {{ $u->name }}?')">@csrf @method('DELETE')<button class="text-rose-600 hover:underline">Eliminar</button></form>
+                            @can('records.delete')<form method="POST" action="{{ route('admin.usuarios.destroy', $u) }}" class="inline ml-3" onsubmit="return confirmar('¿Eliminar a {{ $u->name }}?')">@csrf @method('DELETE')<button class="text-rose-600 hover:underline">Eliminar</button></form>@endcan
                         @endif
                     </td>
                 </tr>

@@ -24,8 +24,6 @@ class SystemController extends Controller
         } catch (Throwable $e) {
             return back()->withErrors(['backup' => 'No se pudo crear la copia: '.$e->getMessage()]);
         }
-        \App\Models\AuditLog::record('respaldo', null, 'Copia de seguridad creada: '.basename($path));
-
         return back()->with('status', 'Copia creada: '.basename($path));
     }
 
@@ -40,18 +38,4 @@ class SystemController extends Controller
         return response()->download($path, $file, ['Content-Type' => str_ends_with($file, '.gz') ? 'application/gzip' : 'application/sql']);
     }
 
-    public function audit(Request $request)
-    {
-        $logs = AuditLog::with('user')
-            ->when($request->filled('usuario'), fn ($q) => $q->where('user_id', $request->usuario))
-            ->when($request->filled('q'), fn ($q) => $q->where('description', 'like', '%'.$request->q.'%'))
-            ->when($request->filled('accion'), fn ($q) => $q->where('action', $request->accion))
-            ->latest('id')->paginate(50)->withQueryString();
-
-        return view('admin.system.audit', [
-            'logs' => $logs,
-            'users' => User::orderBy('name')->get(['id', 'name']),
-            'actions' => AuditLog::distinct()->orderBy('action')->pluck('action'),
-        ]);
-    }
 }

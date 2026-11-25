@@ -186,8 +186,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('respaldos', [Admin\SystemController::class, 'backups'])->name('respaldos.index');
             Route::post('respaldos', [Admin\SystemController::class, 'createBackup'])->middleware('throttle:6,1')->name('respaldos.store');
             Route::get('respaldos/{file}', [Admin\SystemController::class, 'downloadBackup'])->name('respaldos.download');
-            Route::get('auditoria', [Admin\SystemController::class, 'audit'])->name('auditoria');
         });
+        // Historial de actividad: admin todo, supervisor su tienda; cada persona ve "Mi actividad"
+        Route::get('actividad', [Admin\ActivityController::class, 'index'])->middleware('can:activity.view')->name('auditoria');
+        Route::get('auditoria', fn () => redirect()->route('admin.auditoria', request()->query()));
+        Route::get('mi-actividad', [Admin\ActivityController::class, 'mine'])->name('mi-actividad');
         Route::resource('sucursales', Admin\BranchController::class)->except('show')->parameters(['sucursales' => 'branch'])->scoped(['branch' => 'id'])->middleware('can:branches.manage');
     });
 });

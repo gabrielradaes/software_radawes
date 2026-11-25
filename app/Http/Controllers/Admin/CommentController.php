@@ -46,6 +46,7 @@ class CommentController extends Controller
 
     public function destroy(Comment $comment)
     {
+        ensure_can_delete();
         $comment->delete();
 
         return back()->with('status', 'Comentario eliminado.');

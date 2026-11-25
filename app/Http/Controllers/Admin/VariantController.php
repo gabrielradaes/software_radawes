@@ -129,6 +129,7 @@ class VariantController extends Controller
 
     public function destroy(ProductVariant $variant)
     {
+        ensure_can_delete();
         if ($variant->saleItems()->exists()) {
             return back()->withErrors(['variant' => 'No se puede eliminar: tiene ventas registradas. Desactívala.']);
         }

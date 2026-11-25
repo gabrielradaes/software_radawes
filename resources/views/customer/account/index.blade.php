@@ -18,7 +18,7 @@
     @endif
 
     <div class="flex gap-2 overflow-x-auto no-scrollbar mb-6 text-sm">
-        @foreach(['pedidos' => '🛍️ Mis pedidos ('.$orders->where('status', 'activo')->count().')', 'favoritos' => '❤️ Favoritos ('.$favorites->count().')', 'consultas' => '📱 Mis consultas ('.$leads->count().')', 'comentarios' => '💬 Mis comentarios ('.$comments->count().')', 'compras' => '🧾 Mis compras ('.$sales->count().')', 'datos' => '⚙️ Mis datos'] as $k => $label)
+        @foreach(['pedidos' => '🛍️ Mis pedidos ('.$orders->where('status', 'activo')->count().')', 'favoritos' => '❤️ Favoritos ('.$favorites->count().')', 'consultas' => '📱 Mis consultas ('.$leads->count().')', 'comentarios' => '💬 Mis comentarios ('.$comments->count().')', 'compras' => '🧾 Mis compras ('.$sales->count().')', 'actividad' => '🗒️ Mi actividad', 'datos' => '⚙️ Mis datos'] as $k => $label)
             <button @click="tab = @js($k)" :class="tab === @js($k) ? 'bg-brand-900 text-white border-brand-900' : 'bg-white border-brand-200 hover:bg-brand-50'" class="shrink-0 px-4 py-2 rounded-full border font-medium transition">{{ $label }}</button>
         @endforeach
     </div>
@@ -97,6 +97,21 @@
         @empty
             <p class="text-brand-500 text-sm">Cuando compres en tienda y nos des tu celular, tus compras aparecerán aquí.</p>
         @endforelse
+    </section>
+
+    {{-- Mi actividad --}}
+    <section x-show="tab === 'actividad'" x-cloak class="max-w-3xl">
+        <p class="text-sm text-brand-600 mb-3">Lo que hiciste en la página: ingresos a tu cuenta, pedidos, comentarios… Si ves algo que no hiciste, cambia tu contraseña.</p>
+        <div class="bg-white rounded-2xl border border-brand-100 divide-y divide-brand-50">
+            @forelse($activity as $a)
+                <div class="px-4 py-3 flex gap-3 text-sm">
+                    <span class="w-7 text-center">{{ $a->icon() }}</span>
+                    <div class="flex-1 min-w-0"><p class="break-words">{{ $a->description }}</p><p class="text-xs text-brand-500">{{ $a->created_at->isoFormat('D MMM YYYY · HH:mm') }}@if($a->branch) · {{ $a->branch->name }}@endif</p></div>
+                </div>
+            @empty
+                <p class="px-4 py-6 text-brand-500">Todavía no hay actividad.</p>
+            @endforelse
+        </div>
     </section>
 
     {{-- Datos --}}

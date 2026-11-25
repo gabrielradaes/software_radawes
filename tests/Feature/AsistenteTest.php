@@ -189,7 +189,7 @@ class AsistenteTest extends TestCase
 
         $this->chelsea();
         $this->assertStringContainsString('no permite', $this->decir($vend, 'llegaron 3 pares del CH-210 talla 40 negro')['text']);
-        $this->assertStringContainsString('no permite', $this->decir($vend, 'publica el CH-210')['text']);
+        $this->assertStringNotContainsString('no permite', $this->decir($vend, 'publica el CH-210')['text'], 'El vendedor también publica');
 
         // Supervisor: siempre en su tienda, no pregunta la tienda
         $sup = $this->supervisor('el-alto');

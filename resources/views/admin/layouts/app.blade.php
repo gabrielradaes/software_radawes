@@ -7,7 +7,7 @@
     <title>@yield('title', 'Panel') · RyE Admin</title>
     @include('partials.head-assets', ['palette' => \App\Support\Theme::defaultPalette()])
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans antialiased" x-data="{ side: false }">
+<body class="bg-slate-100 text-slate-800 font-sans antialiased" x-data="{ side: false, help: false }">
 @php
     $user = auth()->user();
     $nav = [
@@ -31,7 +31,8 @@
         ['Usuarios', route('admin.usuarios.index'), 'admin.usuarios.*', 'users.manage', '👥'],
         ['Sucursales', route('admin.sucursales.index'), 'admin.sucursales.*', 'branches.manage', '🏬'],
         ['Copias de seguridad', route('admin.respaldos.index'), 'admin.respaldos.*', 'users.manage', '💾'],
-        ['Auditoría', route('admin.auditoria'), 'admin.auditoria', 'users.manage', '🕵️'],
+        ['Historial de actividad', route('admin.auditoria'), 'admin.auditoria', 'activity.view', '🕵️'],
+        ['Mi actividad', route('admin.mi-actividad'), 'admin.mi-actividad', null, '🗒️'],
         ['Colores de la tienda', route('admin.colores.index'), 'admin.colores.*', 'products.manage', '🎨'],
     ];
 @endphp
@@ -77,8 +78,34 @@
         <header class="h-16 bg-white border-b border-slate-200 flex items-center px-4 lg:px-8 gap-4 sticky top-0 z-20">
             <button @click="side = true" class="lg:hidden p-2 -ml-2 rounded hover:bg-slate-100">☰</button>
             <h1 class="font-bold text-lg truncate">@yield('title', 'Panel')</h1>
-            <div class="ml-auto flex items-center gap-3">@yield('actions')</div>
+            <div class="ml-auto flex items-center gap-3">
+                @yield('actions')
+                @if($help = \App\Support\HelpTopics::current())
+                    <button type="button" @click="help = true; ryeHelp.mark(@js(request()->route()->getName())); $el.classList.remove('animate-pulse', 'ring-2', 'ring-amber-400')"
+                            x-init="ryeHelp.seen(@js(request()->route()->getName())) || $el.classList.add('animate-pulse', 'ring-2', 'ring-amber-400')"
+                            class="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-1.5 rounded-full" title="Cómo se usa esta pantalla">❓ <span class="hidden sm:inline">¿Cómo se usa?</span></button>
+                @endif
+            </div>
         </header>
+
+        @if($help)
+            <div x-show="help" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="help = false">
+                <div class="absolute inset-0 bg-black/40" @click="help = false"></div>
+                <aside class="absolute right-0 inset-y-0 w-full max-w-md bg-white shadow-xl p-6 overflow-y-auto" x-show="help" x-transition:enter="transition duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0">
+                    <div class="flex items-start justify-between gap-3 mb-4">
+                        <div><p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Cómo se usa</p><h2 class="text-xl font-bold">{{ $help[0] }}</h2></div>
+                        <button type="button" @click="help = false" class="text-slate-500 hover:text-slate-800 text-xl leading-none p-1">✕</button>
+                    </div>
+                    <ol class="space-y-3">
+                        @foreach($help[1] as $i => $step)
+                            <li class="flex gap-3 text-sm text-slate-700"><span class="w-6 h-6 shrink-0 rounded-full bg-brand-900 text-white text-xs font-bold flex items-center justify-center">{{ $i + 1 }}</span><span>{!! $step !!}</span></li>
+                        @endforeach
+                    </ol>
+                    <p class="mt-6 text-xs text-slate-500 border-t border-slate-100 pt-4">¿Te equivocaste? Casi todo se puede corregir, y todo queda en el historial. Si algo no te deja, es por tu cargo: pídeselo al administrador.</p>
+                    <button type="button" @click="help = false" class="mt-4 w-full bg-brand-900 text-white font-semibold py-2.5 rounded-lg">Entendido</button>
+                </aside>
+            </div>
+        @endif
 
         <main class="p-4 lg:p-8">
             @if(session('status'))
@@ -101,6 +128,12 @@
 
 <script>
     function confirmar(msg) { return confirm(msg || '¿Seguro?'); }
+
+    // Ayuda "¿Cómo se usa?": brilla hasta que la persona la abre una vez en esa pantalla
+    window.ryeHelp = {
+        seen(k) { try { return !!localStorage.getItem('rye-help:' + k); } catch (e) { return true; } },
+        mark(k) { try { localStorage.setItem('rye-help:' + k, '1'); } catch (e) {} },
+    };
 
     // Evita el doble envío (doble clic en Guardar): tras enviar, el botón queda deshabilitado
     document.addEventListener('submit', (e) => {

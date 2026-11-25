@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Support\ImageUpload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Publicaciones del feed. El admin ve todas; el supervisor solo las de su tienda.
@@ -60,9 +61,9 @@ class PostController extends Controller
         $store = $post->branch ?? \App\Models\Branch::active()->where('is_main', true)->first();
         $link = $post->published_at && $post->published_at->isPast() && $store ? route('feed.show', ['branch' => $store, 'post' => $post]) : null;
 
-        return redirect()->route('admin.publicaciones.index')
+        return upload_aware(redirect()->route('admin.publicaciones.index')
             ->with('status', $created > 1 ? "Se crearon $created publicaciones separadas." : 'Publicación creada.')
-            ->with('status_link', $link ? ['url' => $link, 'label' => 'Ver en la tienda ↗'] : null);
+            ->with('status_link', $link ? ['url' => $link, 'label' => 'Ver en la tienda ↗'] : null));
     }
 
     public function edit(Request $request, Post $post)
@@ -79,11 +80,12 @@ class PostController extends Controller
         $post->update($this->validated($request, $post));
         $this->storeMedia($request, $post);
 
-        return back()->with('status', 'Publicación actualizada.');
+        return upload_aware(redirect()->route('admin.publicaciones.edit', $post)->with('status', 'Publicación actualizada.'));
     }
 
     public function destroy(Request $request, Post $post)
     {
+        ensure_can_delete();
         $this->authorizeBranch($request, $post);
         $post->delete();
 
@@ -97,11 +99,12 @@ class PostController extends Controller
         $shared = PostMedia::where('path', $media->path)->whereKeyNot($media->id)->exists()
             || \App\Models\ProductImage::where('path', $media->path)->exists();
         if (! $shared) {
-            ImageUpload::delete($media->path);
+            ImageUpload::delete($media->path);       // foto o video subido (los enlaces no se tocan)
+            ImageUpload::delete($media->thumbnail_path);
         }
         $media->delete();
 
-        return back()->with('status', 'Imagen eliminada.');
+        return back()->with('status', $media->type === 'video' ? 'Video quitado.' : 'Imagen quitada.');
     }
 
     /** El supervisor solo puede tocar publicaciones de su propia tienda. */
@@ -137,16 +140,24 @@ class PostController extends Controller
             'published' => ['boolean'],
             'published_at' => ['nullable', 'date'],
             'media.*' => [ImageUpload::rule(6144)],
+            'videos' => ['nullable', 'array', 'max:5'],
+            'videos.*' => [\App\Support\VideoUpload::rule()],
+            'video_posters' => ['nullable', 'array'],
+            'video_posters.*' => ['nullable', ImageUpload::rule(3072)],
             'video_url' => ['nullable', 'url', 'max:500'],
             'use_product_images' => ['boolean'],
-        ], [], ['title' => 'título', 'body' => 'texto', 'video_url' => 'enlace de video']);
+            'bg' => ['nullable', 'string', 'max:40', fn ($a, $v, $fail) => Post::validBg($v) ? null : $fail('Elige un color de la lista o uno propio.')],
+            'text_color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+        ], [], ['title' => 'título', 'body' => 'texto', 'video_url' => 'enlace de video', 'videos.*' => 'video', 'text_color' => 'color de letra']);
+        $data['bg'] = ($data['bg'] ?? null) ?: null;
+        $data['text_color'] = ($data['text_color'] ?? null) ?: null;
 
         if (! empty($data['video_url']) && ! video_embed_url($data['video_url'])) {
-            abort(back()->withErrors(['video_url' => 'Solo se aceptan enlaces de Facebook, TikTok o YouTube.'])->withInput());
+            throw ValidationException::withMessages(['video_url' => 'Solo se aceptan enlaces de Facebook, TikTok o YouTube.']);
         }
-        if (empty($data['title']) && empty($data['body']) && ! $request->hasFile('media') && empty($data['video_url'])
+        if (empty($data['title']) && empty($data['body']) && ! $request->hasFile('media') && ! $request->hasFile('videos') && empty($data['video_url'])
             && ! ($request->boolean('use_product_images') && ! empty($data['product_id']))) {
-            abort(back()->withErrors(['body' => 'La publicación necesita texto o imágenes.'])->withInput());
+            throw ValidationException::withMessages(['body' => 'La publicación necesita texto, fotos o un video.']);
         }
 
         // El supervisor publica siempre en su tienda
@@ -160,7 +171,10 @@ class PostController extends Controller
         } else {
             $data['published_at'] = null;
         }
-        unset($data['published'], $data['media'], $data['use_product_images'], $data['video_url']);
+        if ($request->hasFile('videos')) {
+            $data['type'] = 'video';
+        }
+        unset($data['published'], $data['media'], $data['use_product_images'], $data['video_url'], $data['videos'], $data['video_posters']);
 
         return $data;
     }
@@ -178,6 +192,14 @@ class PostController extends Controller
             if ($post->type !== 'video') {
                 $post->update(['type' => 'video']);
             }
+        }
+
+        // Videos subidos (del editor o del celular), cada uno con su portada si vino
+        $posters = $request->file('video_posters', []);
+        foreach ($request->file('videos', []) as $key => $file) {
+            $path = \App\Support\VideoUpload::store($file);
+            $poster = isset($posters[$key]) && $posters[$key] instanceof \Illuminate\Http\UploadedFile ? ImageUpload::store($posters[$key], 'videos') : null;
+            $post->media()->create(['type' => 'video', 'path' => $path, 'thumbnail_path' => $poster, 'sort_order' => ++$order]);
         }
 
         if ($useProductImages) {

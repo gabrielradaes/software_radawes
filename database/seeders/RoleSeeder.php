@@ -31,6 +31,8 @@ class RoleSeeder extends Seeder
             ['name' => 'reports.view',    'label' => 'Ver reportes',            'group' => 'admin'],
             ['name' => 'users.manage',    'label' => 'Gestionar usuarios',      'group' => 'admin'],
             ['name' => 'branches.manage', 'label' => 'Gestionar sucursales',    'group' => 'admin'],
+            ['name' => 'records.delete',  'label' => 'Eliminar registros (productos, publicaciones, usuarios…)', 'group' => 'admin'],
+            ['name' => 'activity.view',   'label' => 'Ver el historial de actividad del equipo', 'group' => 'admin'],
         ];
 
         foreach ($permissions as $p) {
@@ -45,17 +47,18 @@ class RoleSeeder extends Seeder
             ],
             Role::SUPERVISOR => [
                 'label' => 'Supervisor',
-                'description' => 'Encargado de sucursal: crea productos, carga stock, registra y anula ventas.',
+                'description' => 'Encargado de sucursal: hace casi todo en su tienda (productos, stock, ventas, publicaciones) menos eliminar.',
                 'permissions' => [
                     'products.view', 'products.manage', 'posts.manage', 'comments.moderate',
                     'stock.view', 'stock.adjust', 'stock.transfer',
-                    'sales.create', 'sales.view', 'sales.cancel', 'leads.manage', 'customers.view', 'reports.view',
+                    'sales.create', 'sales.view', 'sales.cancel', 'leads.manage', 'customers.view', 'customers.manage', 'reports.view',
+                    'activity.view',
                 ],
             ],
             Role::EMPLEADO => [
                 'label' => 'Vendedor',
-                'description' => 'Vendedor de tienda: consulta stock, registra clientes y ventas de su sucursal.',
-                'permissions' => ['products.view', 'stock.view', 'sales.create', 'sales.view', 'leads.manage', 'customers.view'],
+                'description' => 'Vendedor de tienda: consulta stock, vende, atiende clientes y publica en la página de su tienda.',
+                'permissions' => ['products.view', 'stock.view', 'sales.create', 'sales.view', 'leads.manage', 'customers.view', 'posts.manage'],
             ],
         ];
 

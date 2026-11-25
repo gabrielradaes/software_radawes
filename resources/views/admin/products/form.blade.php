@@ -85,9 +85,9 @@
                     @endforeach
                 </div>
             @endif
-            <x-admin.field label="Subir imágenes" name="images" help="JPG/PNG/WebP hasta 4 MB. Puedes elegir varias. Consejo: nombra el archivo con el color (ej. chelsea-cafe.jpg).">
-                <input type="file" name="images[]" multiple accept="image/*" class="w-full text-sm">
-            </x-admin.field>
+            @error('images.*')<p class="text-sm text-rose-600 mb-2">{{ $message }}</p>@enderror
+            @include('admin.partials.media-uploader', ['images' => 'images[]', 'videos' => false])
+            <p class="text-xs text-slate-500 mt-2">💡 Para que se vean profesionales: toca <strong>✏️ Editar → 🪄 Fondo → Quitar fondo</strong> y deja el fondo blanco. La primera foto es la principal.</p>
         </div>
     </div>
 

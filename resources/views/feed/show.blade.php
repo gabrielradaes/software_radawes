@@ -1,6 +1,10 @@
 @extends('layouts.app')
 @section('title', ($post->title ?? 'Publicación').' · '.$currentBranch->name)
-@section('meta_description', \Illuminate\Support\Str::limit($post->body, 150))
+{{-- Siempre texto (nunca null): con null, @section abre un bloque que no se cierra --}}
+@section('meta_description', \Illuminate\Support\Str::limit((string) ($post->body ?: $post->title ?: $currentBranch->name), 150))
+@if($img = $post->media->map->previewUrl()->filter()->first())
+    @section('og_image', $img)
+@endif
 
 @section('content')
 <div class="max-w-2xl mx-auto px-4 py-10">

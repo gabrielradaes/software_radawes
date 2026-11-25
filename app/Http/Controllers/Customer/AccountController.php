@@ -26,7 +26,9 @@ class AccountController extends Controller
         $orders = \App\Models\Reservation::where('customer_id', $customer->id)->with('items.variant.product', 'items.variant.attributeValues.attribute', 'branch')
             ->orderByRaw("status = 'activo' desc")->latest('id')->take(10)->get();
 
-        return view('customer.account.index', compact('customer', 'favorites', 'comments', 'leads', 'sales', 'orders'));
+        $activity = \App\Models\AuditLog::where('customer_id', $customer->id)->with('branch')->latest('id')->take(40)->get();
+
+        return view('customer.account.index', compact('customer', 'favorites', 'comments', 'leads', 'sales', 'orders', 'activity'));
     }
 
     public function update(Request $request)

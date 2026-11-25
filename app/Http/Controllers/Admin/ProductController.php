@@ -56,8 +56,8 @@ class ProductController extends Controller
         $this->storeImages($request, $product);
         $this->storeSpecs($request, $product);
 
-        return redirect()->route('admin.productos.variantes', $product)
-            ->with('status', 'Producto creado. Ahora genera sus variantes y stock.');
+        return upload_aware(redirect()->route('admin.productos.variantes', $product)
+            ->with('status', 'Producto creado. Ahora genera sus variantes y stock.'));
     }
 
     public function edit(Request $request, Product $product)
@@ -149,11 +149,12 @@ class ProductController extends Controller
         $this->storeImages($request, $product);
         $this->storeSpecs($request, $product);
 
-        return back()->with('status', 'Producto actualizado.');
+        return upload_aware(redirect()->route('admin.productos.edit', $product)->with('status', 'Producto actualizado.'));
     }
 
     public function destroy(Request $request, Product $product)
     {
+        ensure_can_delete();
         // El supervisor no elimina: solo quita el producto de su tienda
         if ($scoped = $request->user()->scopedBranchId()) {
             $product->branches()->detach($scoped);

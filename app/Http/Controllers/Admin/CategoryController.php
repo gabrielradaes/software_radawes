@@ -47,6 +47,7 @@ class CategoryController extends Controller
 
     public function destroy(Category $category)
     {
+        ensure_can_delete();
         if ($category->products()->exists() || $category->children()->exists()) {
             return back()->withErrors(['category' => 'No se puede eliminar: tiene productos o subcategorías.']);
         }

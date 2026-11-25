@@ -32,7 +32,7 @@
                     <div class="mt-3 flex gap-4 text-xs">
                         <button @click="reply = !reply" class="font-semibold text-brand-500 hover:underline">Responder</button>
                         <form method="POST" action="{{ route('admin.comentarios.toggle', $c) }}">@csrf @method('PATCH')<button class="text-slate-500 hover:underline">{{ $c->is_approved ? 'Ocultar' : 'Aprobar' }}</button></form>
-                        <form method="POST" action="{{ route('admin.comentarios.destroy', $c) }}" onsubmit="return confirmar('¿Eliminar comentario y sus respuestas?')">@csrf @method('DELETE')<button class="text-rose-600 hover:underline">Eliminar</button></form>
+                        @can('records.delete')<form method="POST" action="{{ route('admin.comentarios.destroy', $c) }}" onsubmit="return confirmar('¿Eliminar comentario y sus respuestas?')">@csrf @method('DELETE')<button class="text-rose-600 hover:underline">Eliminar</button></form>@endcan
                     </div>
                     <form x-show="reply" x-cloak method="POST" action="{{ route('admin.comentarios.reply', $c) }}" class="mt-3 flex gap-2">
                         @csrf

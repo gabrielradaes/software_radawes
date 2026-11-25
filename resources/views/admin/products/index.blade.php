@@ -69,7 +69,7 @@
                     <td class="px-4 py-3 text-right whitespace-nowrap">
                         <a href="{{ route('admin.productos.variantes', $p) }}" class="text-brand-500 hover:underline text-xs font-semibold">Variantes/stock</a>
                         <a href="{{ route('admin.productos.edit', $p) }}" class="ml-3 text-slate-600 hover:underline text-xs">Editar</a>
-                        <form method="POST" action="{{ route('admin.productos.destroy', $p) }}" class="inline ml-3" onsubmit="return confirmar('¿Eliminar {{ $p->name }}?')">@csrf @method('DELETE')<button class="text-rose-600 hover:underline text-xs">Eliminar</button></form>
+                        @can('records.delete')<form method="POST" action="{{ route('admin.productos.destroy', $p) }}" class="inline ml-3" onsubmit="return confirmar('¿Eliminar {{ $p->name }}?')">@csrf @method('DELETE')<button class="text-rose-600 hover:underline text-xs">Eliminar</button></form>@endcan
                     </td>
                 </tr>
             @empty

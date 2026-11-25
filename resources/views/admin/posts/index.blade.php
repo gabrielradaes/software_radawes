@@ -38,7 +38,7 @@
                     <td class="px-4 py-3 text-right text-xs whitespace-nowrap">
                         <a href="{{ route('feed.show', ['branch' => $p->branch?->slug ?? $currentBranch->slug, 'post' => $p]) }}" target="_blank" class="text-slate-500 hover:underline">Ver ↗</a>
                         <a href="{{ route('admin.publicaciones.edit', $p) }}" class="ml-3 text-slate-600 hover:underline">Editar</a>
-                        <form method="POST" action="{{ route('admin.publicaciones.destroy', $p) }}" class="inline ml-3" onsubmit="return confirmar('¿Eliminar esta publicación?')">@csrf @method('DELETE')<button class="text-rose-600 hover:underline">Eliminar</button></form>
+                        @can('records.delete')<form method="POST" action="{{ route('admin.publicaciones.destroy', $p) }}" class="inline ml-3" onsubmit="return confirmar('¿Eliminar esta publicación?')">@csrf @method('DELETE')<button class="text-rose-600 hover:underline">Eliminar</button></form>@endcan
                     </td>
                 </tr>
             @empty

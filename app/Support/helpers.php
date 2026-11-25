@@ -53,3 +53,22 @@ if (! function_exists('money')) {
         return $symbol.' '.number_format((float) $amount, 2, ',', '.');
     }
 }
+
+if (! function_exists('ensure_can_delete')) {
+    /** Eliminar es solo del administrador: el supervisor y el vendedor hacen todo lo demás. */
+    function ensure_can_delete(): void
+    {
+        abort_unless(auth()->user()?->can('records.delete'), 403, 'Solo el administrador puede eliminar. Pídeselo o, si es una publicación, desactívala.');
+    }
+}
+
+if (! function_exists('upload_aware')) {
+    /**
+     * Formularios que suben fotos/videos con barra de progreso (media-uploader.js): en vez de redirigir,
+     * responden {redirect: url} y el navegador va allí (el mensaje de éxito queda guardado para esa página).
+     */
+    function upload_aware(\Illuminate\Http\RedirectResponse $redirect): \Symfony\Component\HttpFoundation\Response
+    {
+        return request()->header('X-RyE-Upload') ? response()->json(['redirect' => $redirect->getTargetUrl()]) : $redirect;
+    }
+}

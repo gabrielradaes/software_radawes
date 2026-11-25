@@ -34,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
             $this->app->terminating(function () {
                 if (request()->is('admin*') && auth('web')->check()) {
                     \App\Services\DatabaseBackup::dailyIfDue();
+                    \App\Models\AuditLog::pruneIfDue();
                 }
             });
         }

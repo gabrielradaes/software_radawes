@@ -15,7 +15,7 @@
                         <td class="px-4 py-2.5">{!! $cat->is_active ? '<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Activa</span>' : '<span class="text-xs px-2 py-0.5 rounded-full bg-slate-200">Oculta</span>' !!}</td>
                         <td class="px-4 py-2.5 text-right text-xs whitespace-nowrap">
                             <a href="{{ route('admin.categorias.edit', $cat) }}" class="text-slate-600 hover:underline">Editar</a>
-                            <form method="POST" action="{{ route('admin.categorias.destroy', $cat) }}" class="inline ml-3" onsubmit="return confirmar('¿Eliminar {{ $cat->name }}?')">@csrf @method('DELETE')<button class="text-rose-600 hover:underline">Eliminar</button></form>
+                            @can('records.delete')<form method="POST" action="{{ route('admin.categorias.destroy', $cat) }}" class="inline ml-3" onsubmit="return confirmar('¿Eliminar {{ $cat->name }}?')">@csrf @method('DELETE')<button class="text-rose-600 hover:underline">Eliminar</button></form>@endcan
                         </td>
                     </tr>
                 @endforeach

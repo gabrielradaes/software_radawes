@@ -13,7 +13,7 @@
                         @foreach($c->items as $i)<span class="text-center border border-slate-200 rounded px-2 py-0.5 text-xs"><span class="text-slate-500">{{ $i->size }}</span> <strong>{{ $i->quantity }}</strong></span>@endforeach
                     </div>
                 </div>
-                <form method="POST" action="{{ route('admin.curvas.destroy', $c) }}" onsubmit="return confirm('¿Eliminar la curva {{ $c->name }}?')">@csrf @method('DELETE')<button class="text-xs text-rose-600 hover:underline">Eliminar</button></form>
+                @can('records.delete')<form method="POST" action="{{ route('admin.curvas.destroy', $c) }}" onsubmit="return confirm('¿Eliminar la curva {{ $c->name }}?')">@csrf @method('DELETE')<button class="text-xs text-rose-600 hover:underline">Eliminar</button></form>@endcan
             </div>
         @empty
             <p class="p-6 text-sm text-slate-400">No hay curvas.</p>

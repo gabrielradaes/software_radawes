@@ -14,7 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [EnsureVisitorToken::class, \App\Http\Middleware\ResolveBranchDomain::class]);
+        $middleware->web(append: [EnsureVisitorToken::class, \App\Http\Middleware\ResolveBranchDomain::class, \App\Http\Middleware\RecordActivity::class]);
         $middleware->encryptCookies(except: [EnsureVisitorToken::COOKIE, 'rye_name']);
         // La puerta de actualización se protege con su propia clave (no con sesión/CSRF)
         $middleware->validateCsrfTokens(except: ['_deploy', '_deploy/*']);

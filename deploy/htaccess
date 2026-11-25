@@ -42,3 +42,20 @@
     ExpiresByType image/webp "access plus 1 month"
     ExpiresByType image/svg+xml "access plus 1 month"
 </IfModule>
+
+# Videos subidos desde el editor de la página
+AddType video/mp4 .mp4
+AddType video/webm .webm
+AddType video/quicktime .mov
+<IfModule mod_expires.c>
+    ExpiresByType video/mp4 "access plus 1 month"
+    ExpiresByType video/webm "access plus 1 month"
+</IfModule>
+
+# Límites de subida para videos (LiteSpeed los lee de aquí; otros servidores ignoran este bloque)
+<IfModule LiteSpeed>
+    php_value upload_max_filesize 128M
+    php_value post_max_size 130M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>

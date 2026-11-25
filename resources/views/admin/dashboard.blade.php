@@ -3,6 +3,32 @@
 
 @section('content')
 @php
+    $u = auth()->user();
+    $quick = array_values(array_filter([
+        $u->can('sales.create') ? ['🧾', 'Vender', 'Registrar una venta', route('admin.ventas.create'), 'bg-emerald-600 hover:bg-emerald-700 text-white'] : null,
+        $u->can('stock.view') ? ['🔎', 'Ver stock', '¿Hay talla? Buscar modelo', route('admin.stock.index'), 'bg-white hover:bg-slate-50'] : null,
+        $u->can('posts.manage') ? ['📣', 'Publicar', 'Fotos, videos y ofertas', route('admin.publicaciones.create'), 'bg-gradient-to-br from-fuchsia-600 to-orange-500 text-white'] : null,
+        $u->can('sales.create') ? ['📌', 'Apartar', 'Separar un par', route('admin.apartados.create'), 'bg-white hover:bg-slate-50'] : null,
+        $u->can('sales.create') ? ['💵', 'Caja', 'Abrir, cerrar, movimientos', route('admin.caja'), 'bg-white hover:bg-slate-50'] : null,
+        $u->can('stock.adjust') ? ['🚚', 'Llegó mercadería', 'Registrar una compra', route('admin.compras.create'), 'bg-white hover:bg-slate-50'] : null,
+        $u->can('products.manage') ? ['👞', 'Nuevo producto', 'Crear un modelo', route('admin.productos.create'), 'bg-white hover:bg-slate-50'] : null,
+        $u->can('customers.view') ? ['🤝', 'Clientes', 'Seguimientos y avisos', route('admin.crm'), 'bg-white hover:bg-slate-50'] : null,
+        $u->can('activity.view') ? ['🕵️', 'Historial', 'Qué hizo el equipo', route('admin.auditoria'), 'bg-white hover:bg-slate-50'] : ['🗒️', 'Mi actividad', 'Lo que hice', route('admin.mi-actividad'), 'bg-white hover:bg-slate-50'],
+    ]));
+@endphp
+<div class="mb-6">
+    <p class="text-slate-600 mb-3">Hola, <strong>{{ $u->firstName() }}</strong> 👋 ¿Qué quieres hacer?</p>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        @foreach($quick as [$icon, $label, $sub, $url, $cls])
+            <a href="{{ $url }}" class="rounded-xl border border-slate-200 p-4 shadow-sm transition {{ $cls }}">
+                <span class="text-2xl">{{ $icon }}</span>
+                <p class="font-bold mt-1">{{ $label }}</p>
+                <p class="text-xs opacity-75">{{ $sub }}</p>
+            </a>
+        @endforeach
+    </div>
+</div>
+@php
     $cards = [
         ['Leads nuevos', $stats['leads_nuevos'], 'por contactar', route('admin.leads.index', ['estado' => 'nuevo']), 'bg-emerald-500'],
         ['Consultas esta semana', $stats['leads_semana'], 'clics en WhatsApp', route('admin.leads.index'), 'bg-brand-500'],
