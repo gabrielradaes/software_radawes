@@ -42,6 +42,14 @@ class StockEntryController extends Controller
             'knownColors' => $known->merge(collect(Parser::COLORS)->map(fn ($c) => Str::ucfirst(['cafe' => 'café', 'marron' => 'marrón'][$c] ?? $c)))
                 ->unique(fn ($c) => Parser::fold($c))->values(),
             'preset' => $preset ? ['id' => $preset->id, 'name' => $preset->name, 'code' => $preset->code] : null,
+            // Prellenado desde el asistente (modelos dictados): código, marca, color y talla
+            'prefill' => array_filter([
+                'code' => $preset ? null : mb_substr((string) $request->query('codigo'), 0, 40),
+                'brand' => mb_substr((string) $request->query('marca'), 0, 60),
+                'color' => mb_substr((string) $request->query('color'), 0, 40),
+                'talla' => preg_match('/^[0-9A-Za-z.]{1,6}$/', (string) $request->query('talla')) ? (string) $request->query('talla') : null,
+            ]),
+            'brands' => \App\Models\Brand::orderBy('name')->pluck('name'),
             'done' => $request->filled('hecho') ? Product::find((int) $request->query('hecho')) : null,
         ]);
     }
@@ -58,12 +66,13 @@ class StockEntryController extends Controller
         $data = $request->validate([
             'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'branch_id' => [$scoped ? 'nullable' : 'required', 'integer', Rule::exists('branches', 'id')->where('is_active', true)],
-            'name' => [$isNew ? 'required' : 'nullable', 'string', 'max:160'],
+            'name' => [$isNew && ! $request->filled('code') ? 'required' : 'nullable', 'string', 'max:160'],
             'code' => ['nullable', 'string', 'max:40', Rule::unique('products', 'code')],
             'category_id' => [$isNew ? 'required' : 'nullable', 'integer', 'exists:categories,id'],
             'price' => [$isNew ? 'required' : 'nullable', 'numeric', 'min:0', 'max:999999'],
             'cost' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'material' => ['nullable', 'string', 'max:120'],
+            'brand' => ['nullable', 'string', 'max:120'],
             'show_web' => ['nullable', 'boolean'],
             'note' => ['nullable', 'string', 'max:200'],
             'colors' => ['nullable', 'array', 'max:20'],
@@ -75,7 +84,7 @@ class StockEntryController extends Controller
             'images.*' => [ImageUpload::rule(6144)],
         ], [
             'code.unique' => 'Ya hay un modelo con ese código: búscalo arriba en «Ya existe» en vez de crearlo de nuevo.',
-            'name.required' => 'Escribe el nombre del modelo.',
+            'name.required' => 'Escribe el nombre o el código del modelo.',
             'category_id.required' => 'Elige la clase (botín, mocasín…).',
             'price.required' => 'Escribe el precio de venta.',
             'branch_id.required' => 'Elige la tienda donde llegaron los pares.',
@@ -115,11 +124,14 @@ class StockEntryController extends Controller
 
         $product = DB::transaction(function () use ($data, $isNew, $branch, $user, $request, $colors, $tallas, $lines) {
             if ($isNew) {
+                // Sin nombre: marca + código («Demócrata 596101-001»)
+                $name = filled($data['name'] ?? null) ? Parser::title($data['name']) : trim(($data['brand'] ?? '') ?: 'Modelo').' '.$data['code'];
                 $product = Product::create([
                     'category_id' => $data['category_id'],
-                    'name' => Parser::title($data['name']),
+                    'brand_id' => ! empty($data['brand']) ? \App\Models\Brand::firstOrCreate(['slug' => Str::slug($data['brand'])], ['name' => trim($data['brand'])])->id : null,
+                    'name' => $name,
                     'code' => ($data['code'] ?? '') !== '' ? $data['code'] : null,
-                    'slug' => $this->uniqueSlug($data['name']),
+                    'slug' => $this->uniqueSlug($name),
                     'base_price' => $data['price'],
                     'cost' => $data['cost'] ?? null,
                     'material' => $data['material'] ?? null,

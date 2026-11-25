@@ -127,8 +127,8 @@ class ManualYAsistenteTest extends TestCase
         $r = $this->decir($sup, 'CH-500');                                              // un código no es un precio
         $this->assertStringContainsString('precio', $r['text']);
         $r = $this->decir($sup, '450');
-        $r = $this->decir($sup, 'precio 380');                                          // corrige el precio, pero no responde la pregunta
-        $this->assertStringContainsString('No entendí', $r['text']);
+        $r = $this->decir($sup, 'precio 380');                                          // corrige el precio y vuelve a preguntar
+        $this->assertStringContainsString('Anotado', $r['text']);
         $r = $this->decir($sup, 'hola');                                                // un saludo no rompe nada
         $this->assertStringContainsString('Seguimos', $r['text']);
         $this->decir($sup, 'negro y café');
@@ -163,6 +163,55 @@ class ManualYAsistenteTest extends TestCase
         $r = $this->decir($sup, 'hola');
         $this->assertStringContainsString('Hola', $r['text']);
         $this->assertNotEmpty($r['links']);
+    }
+
+    /** Mensajes reales que el supervisor de Comercio le dictó al asistente (25/11) y en los que se trabó. */
+    public function test_mensajes_reales_del_supervisor_de_comercio(): void
+    {
+        $sup = $this->supervisor('comercio');
+
+        $r = $this->decir($sup, 'Cómo puedo agregar calzados a mi stock de mi depósito para manualmente');
+        $this->assertStringContainsString('Para cargar calzados tú mismo', $r['text']);
+        $this->assertStringContainsString('/admin/stock/ingresar', $r['links'][0][1]);
+
+        // Código de fábrica dictado con espacios, color en portugués, marca y clase
+        $r = $this->decir($sup, 'Quiero agregar 59 6101-001 preto de la talla 39 expreto por si acaso que es de la marca demócrata');
+        $this->assertStringContainsString('Demócrata 596101-001', $r['text']);   // propone un nombre
+        $this->decir($sup, 'son calzados urbanos');
+        $this->decir($sup, 'ninguno');
+        $this->decir($sup, '450');
+        $r = $this->decir($sup, '1');
+        $this->assertTrue($r['confirm'], $r['text']);
+        $rows = collect($r['table'][1])->pluck(1, 0);
+        $this->assertSame('596101-001', $rows['Código']);
+        $this->assertSame('Negro', $rows['Colores']);
+        $this->assertSame('39', $rows['Tallas']);
+        $this->assertSame('Demócrata', $rows['Marca']);
+        $this->actingAs($sup)->postJson('/admin/asistente/confirmar')->assertOk();
+        $p = Product::where('code', '596101-001')->firstOrFail();
+        $this->assertSame('Demócrata', $p->brand?->name);
+        $this->assertSame(1, $this->stock($p, '39', 'Negro'));
+
+        // "Código X" de un modelo que no existe ya no da vueltas: pasa a modelo nuevo
+        $this->decir($sup, 'Quiero agregar al stock inventario');
+        $r = $this->decir($sup, 'Código 240303-001');
+        $this->assertStringContainsString('modelo nuevo', $r['text']);
+        $this->decir($sup, 'cancelar');
+
+        // Una lista dictada de corrido: muestra lo entendido y un botón prellenado por modelo (no es una "nota")
+        $r = $this->decir($sup, 'te voy a hacer anotar los códigos de la marca demócrata 59 6101-001 la talla 39 es de color negro siguiente 24 03 03 - 001 es de color tabaco 37 continuamos 59 61 01 - 006 es de color tabaco talla 42');
+        $this->assertStringContainsString('3 modelos', $r['text']);
+        $this->assertSame(['596101-001', 'Negro', '39', 'ya existe'], $r['table'][1][0]);
+        $this->assertSame(['240303-001', 'Tabaco', '37', 'nuevo'], $r['table'][1][1]);
+        $this->assertStringContainsString('codigo=240303-001', $r['links'][1][1]);
+        $this->actingAs($sup)->get($r['links'][1][1])->assertOk()->assertSee('240303-001')->assertSee('Demócrata');
+        // Desde ese botón: sin nombre, queda «Demócrata 240303-001»
+        $this->actingAs($sup)->post('/admin/stock/ingresar', ['code' => '240303-001', 'brand' => 'Demócrata', 'category_id' => Category::where('slug', 'botines')->value('id'),
+            'price' => 390, 'colors' => ['Tabaco'], 'tallas' => ['37'], 'q' => [0 => ['37' => '1']]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('Demócrata 240303-001', Product::where('code', '240303-001')->value('name'));
+
+        $r = $this->decir($sup, '¿Cuántos HT 510 quedan en stock?');
+        $this->assertStringContainsString('No hay ningún modelo con el código **HT-510**', $r['text']);
     }
 
     public function test_los_chats_del_asistente_quedan_para_el_admin_aunque_se_limpie_la_pantalla(): void

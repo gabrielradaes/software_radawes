@@ -24,6 +24,16 @@ class Parser
         'caramelo', 'natural', 'dorado', 'plateado', 'rosado', 'celeste', 'amarillo', 'naranja', 'morado', 'lila', 'habano', 'arena',
     ];
 
+    /** Colores en portugués (así vienen en las cajas) → como se venden aquí. */
+    private const ALIASES = [
+        '/\b(?:ex|es\s+)?preto\b/' => 'Negro',
+        '/\bmarrom\b/' => 'Marrón',
+        '/\bbranco\b/' => 'Blanco',
+        '/\bvermelho\b/' => 'Rojo',
+        '/\bcinza\b/' => 'Gris',
+        '/\bbege\b/' => 'Beige',
+    ];
+
     /** Palabras que cortan un nombre o un código. */
     private const STOP = 'codigo|cod|color|colores|talla|tallas|precio|cuesta|vale|en|para|de|del|y|con|tienda|sucursal|cantidad|material|clase|categoria|a|al|que|los|las|el|la|por|cada|pares|par|bs|bolivianos|publica|publicalo|publicar|carrusel|separadas';
 
@@ -59,7 +69,10 @@ class Parser
             (bool) preg_match('/\b(?:ya (?:le )?(?:llame|hable|escribi|contacte|visite|lo hice|esta hecho)|marca(?:la|lo)? como hech[ao]|tarea hecha|seguimiento hecho|completa(?:r)? (?:la tarea|el seguimiento))\b/', $a) => 'tarea_hecha',
             (bool) preg_match('/\b(?:que (?:tengo|hay)(?: pendiente)?(?: para)? (?:hoy|manana|esta semana)|mis (?:tareas|seguimientos|pendientes|recordatorios)|(?:tareas|seguimientos|pendientes|recordatorios)(?: de| para)? (?:hoy|la semana|esta semana)|que seguimientos|a quien (?:tengo que|debo|hay que) llamar)\b/', $a) => 'tareas',
             (bool) preg_match('/\b(?:recuerdame|recordarme|recordar|recordatorio|agenda(?:r|me)?|programa(?:r)? (?:una llamada|un seguimiento)|seguimiento|tengo que (?:llamar|escribir|avisar)|hay que (?:llamar|escribir|avisar)|llamar a|escribirle a|avisarle a|avisale a)\b/', $a) => 'tarea',
-            (bool) preg_match('/\b(?:nota|anota(?:r)?|apunta(?:r)?|toma nota|hable con|le escribi a)\b/', $a) => 'nota',
+            // "anotar" códigos o tallas es cargar stock, no una nota de cliente
+            (bool) preg_match('/\b(?:nota|anota(?:r)?|apunta(?:r)?|toma nota|hable con|le escribi a)\b/', $a)
+                && (preg_match('/\b(?:nota para|client[ea]|hable con|le escribi a)\b/', $a)
+                    || ! preg_match('/\b(?:stock|inventario|tallas?|codigos?|calzados?|zapatos?|pares|deposito)\b/', $a)) => 'nota',
             (bool) preg_match('/\b(?:ficha|historial|datos|informacion|info)\s+(?:de|del)\b|\bquien es\b/', $a) => 'ficha',
             (bool) preg_match('/\b(?:marca(?:lo|la)?|pon(?:lo|la|le)?|pasa(?:lo|la)?|cambia(?:lo|la)?|ahora es)\b.*\b(?:como|a)?\s*(?:prospecto|interesad[oa]|frecuente|perdid[oa]|vip)\b|\betiqueta(?:lo|la|r)?\b|\btalla (?:habitual|de siempre)\b|\bsu talla es\b|\bcalza\s+(?:la\s+)?\d/', $a) => 'cliente_crm',
             (bool) preg_match('/\b(?:cuanto (?:vendimos|vendi|vendieron|se vendio|hemos vendido|llevamos)|ventas de(?:l)? (?:hoy|ayer|la semana|esta semana|el mes|este mes|mes)|reporte|resumen de ventas|(?:lo|los) mas vendidos?|como (?:van|vamos con) las ventas)\b/', $a) => 'reporte',
@@ -126,6 +139,10 @@ class Parser
         if (preg_match('/\bsin codigo\b/', $this->a)) {
             return '';
         }
+        // Códigos de fábrica solo con números y guion, aunque se dicten con espacios: "59 6101-001" → 596101-001
+        if ($codes = $this->numericCodes()) {
+            return $codes[0]['code'];
+        }
         if (preg_match('/\b(?:codigo|cod|modelo)\s*(?:es|del producto|numero|nro|n)?\s*[:#.]?\s*((?:[a-z0-9][a-z0-9\-\/.]*\s?){1,3})/u', $this->a, $m, PREG_OFFSET_CAPTURE)) {
             $tokens = [];
             foreach (preg_split('/\s+/', trim($m[1][0])) as $tok) {
@@ -152,6 +169,43 @@ class Parser
                         return self::normalizeCode($m[1].'-'.$m[2]);
                     }
                 }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Códigos numéricos con guion ("596101-001", dictado "59 61 01 - 006"), con su posición en el texto.
+     * @return array<int, array{code: string, start: int, end: int}>
+     */
+    public function numericCodes(): array
+    {
+        preg_match_all('/(?<![\d.,])(\d{2,6}(?:\s\d{1,6}){0,3})\s?-\s?(\d{2,4})(?![\d.,])/', $this->a, $all, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        $out = [];
+        foreach ($all as $m) {
+            $left = preg_replace('/\s+/', '', $m[1][0]);
+            if (strlen($left) >= 4) {
+                $out[] = ['code' => $left.'-'.$m[2][0], 'start' => $m[0][1], 'end' => $m[0][1] + strlen($m[0][0])];
+            }
+        }
+
+        return $out;
+    }
+
+    /** Marca dicha con "marca X" ("de la marca Demócrata"). */
+    public function brand(): ?string
+    {
+        if (preg_match('/\bmarca\s+([a-z][a-z0-9]+(?:\s+[a-z][a-z0-9]+)?)/', $this->a, $m, PREG_OFFSET_CAPTURE)) {
+            $words = [];
+            foreach (explode(' ', $m[1][0]) as $w) {
+                if (preg_match('/^('.self::STOP.'|es|son|que|todo|esto|hasta)$/', $w)) {
+                    break;
+                }
+                $words[] = $w;
+            }
+            if ($words) {
+                return self::title($this->slice($m[1][1], mb_strlen(implode(' ', $words))));
             }
         }
 
@@ -206,6 +260,13 @@ class Parser
 
         $found = [];
         $rest = $this->a;
+        // Las cajas vienen de Brasil: "preto" (o dictado "es preto" → "expreto") es negro
+        foreach (self::ALIASES as $re => $color) {
+            if (preg_match($re, $rest)) {
+                $found[] = $known->get(self::fold($color), $color);
+                $rest = preg_replace($re, ' ', $rest);
+            }
+        }
         foreach ($keys as $k) {
             if (preg_match('/\b'.preg_quote($k, '/').'\b/', $rest)) {
                 $found[] = $known[$k];
@@ -215,9 +276,9 @@ class Parser
 
         // Colores nuevos dichos después de "color/colores": "colores terracota y oliva"
         if (preg_match('/\bcolor(?:es)?\s*(?:es|son|:)?\s*([a-z ,]+?)(?=\s*(?:\.|;|$|\btallas?\b|\bprecio\b|\bcodigo\b|\bpara\b|\ben\b|\bcon\b|\d))/', $rest, $m)) {
-            foreach (preg_split('/\s*(?:,|\by\b|\be\b)\s*/', trim($m[1])) as $w) {
+            foreach (preg_split('/\s*(?:,|\by\b|\be\b|\s)\s*/', trim($m[1])) as $w) {
                 $w = trim($w);
-                if ($w !== '' && mb_strlen($w) >= 3 && ! preg_match('/^('.self::STOP.'|varios|todos)$/', $w)) {
+                if ($w !== '' && mb_strlen($w) >= 3 && ! preg_match('/^('.self::STOP.'|varios|todos|siguiente|continuamos|continua|iguales|igual|otros?|otras?|despues|luego|dictar|este|esta|ese|mismo|tambien|marca|es|son|bueno|ahora)$/', $w)) {
                     $found[] = Str::ucfirst($w);
                 }
             }

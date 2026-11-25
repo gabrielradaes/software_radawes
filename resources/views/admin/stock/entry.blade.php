@@ -39,6 +39,7 @@
           'modelUrl' => route('admin.stock.modelo', ['product' => '__ID__']),
           'branchId' => $scoped ?? (int) old('branch_id', request('sucursal', $branches->first()?->id)),
           'preset' => $preset,
+          'prefill' => $prefill,
           'old' => $old,
       ]))" @submit="submit($event)">
     @csrf
@@ -97,15 +98,20 @@
         <div x-show="mode === 'nuevo'" x-cloak class="mt-4 space-y-4">
             <div class="grid sm:grid-cols-3 gap-3">
                 <div class="sm:col-span-2">
-                    <label class="block text-sm font-medium mb-1">Nombre del modelo *</label>
-                    <input name="name" value="{{ old('name') }}" :disabled="mode !== 'nuevo'" maxlength="160" placeholder="Ej.: Botín Chelsea" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+                    <label class="block text-sm font-medium mb-1">Nombre del modelo</label>
+                    <input name="name" value="{{ old('name') }}" :disabled="mode !== 'nuevo'" maxlength="160" placeholder="Ej.: Botín Chelsea (si no tiene, queda Marca + código)" class="w-full rounded-lg border border-slate-300 px-3 py-2">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Código</label>
-                    <input name="code" value="{{ old('code') }}" :disabled="mode !== 'nuevo'" maxlength="40" placeholder="Ej.: CH-210" class="w-full rounded-lg border border-slate-300 px-3 py-2 uppercase">
+                    <input name="code" value="{{ old('code', $prefill['code'] ?? '') }}" :disabled="mode !== 'nuevo'" maxlength="40" placeholder="Ej.: CH-210" class="w-full rounded-lg border border-slate-300 px-3 py-2 uppercase">
                 </div>
             </div>
-            <div class="grid sm:grid-cols-3 gap-3">
+            <div class="grid sm:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Marca</label>
+                    <input name="brand" value="{{ old('brand', $prefill['brand'] ?? '') }}" :disabled="mode !== 'nuevo'" list="marcas" maxlength="120" placeholder="Ej.: Demócrata" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+                    <datalist id="marcas">@foreach($brands as $b)<option value="{{ $b }}">@endforeach</datalist>
+                </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Clase *</label>
                     <select name="category_id" :disabled="mode !== 'nuevo'" class="w-full rounded-lg border border-slate-300 px-3 py-2">
@@ -241,11 +247,11 @@ function stockEntry(cfg) {
     const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
     const sortT = (a) => a.sort((x, y) => (isNaN(x) || isNaN(y)) ? String(x).localeCompare(String(y)) : parseFloat(x) - parseFloat(y));
     return {
-        mode: cfg.old.mode || (cfg.preset ? 'buscar' : null),
+        mode: cfg.old.mode || (cfg.preset ? 'buscar' : (cfg.prefill.code ? 'nuevo' : null)),
         branchId: cfg.branchId,
         query: '', results: [], searching: false, product: null,
         colors: cfg.old.colors || [], tallas: (cfg.old.tallas || []).map(String), qty: {}, have: {},
-        newColor: '', newTalla: '', fillN: 1, extraSizes: [],
+        newColor: '', newTalla: '', fillN: 1, extraSizes: [], keepPrefill: false,
 
         init() {
             // Vuelve con lo que se había escrito si hubo un error
@@ -254,6 +260,13 @@ function stockEntry(cfg) {
                 const v = (q[ci] || {})[t || '_'];
                 if (v !== undefined && v !== null && v !== '') this.qty[this.key(c, t)] = v;
             }));
+            // Viene del asistente con un modelo dictado: color, talla y 1 par ya marcados
+            if (!cfg.old.mode && (cfg.prefill.color || cfg.prefill.talla)) {
+                if (cfg.prefill.color) this.colors = [cap(cfg.prefill.color)];
+                if (cfg.prefill.talla) this.tallas = [String(cfg.prefill.talla)];
+                this.qty[this.key(this.colors[0] || '', this.tallas[0] || '')] = 1;
+                this.keepPrefill = true;
+            }
             const pid = cfg.old.product_id || (cfg.preset && cfg.preset.id);
             if (pid) { this.product = { id: pid, name: (cfg.preset && cfg.preset.name) || 'Modelo', code: cfg.preset && cfg.preset.code }; this.loadModel(!!cfg.old.product_id); }
         },
@@ -284,7 +297,11 @@ function stockEntry(cfg) {
                     have[this.key(c === 'Único' ? '' : c, t === 'Única' ? '' : t)] = cells[c][t].available;
                 }));
                 this.have = have;
-                if (!keepSelection) {
+                if (this.keepPrefill) {   // del modelo, más el color y la talla dictados
+                    this.keepPrefill = false;
+                    d.colors.map((c) => c.name).filter((n) => n !== 'Único' && !this.colors.some((x) => fold(x) === fold(n))).forEach((n) => this.colors.push(n));
+                    this.tallas = sortT([...new Set([...this.tallas, ...d.sizes.filter((s) => s !== 'Única').map(String)])]);
+                } else if (!keepSelection) {
                     this.colors = d.colors.map((c) => c.name).filter((n) => n !== 'Único');
                     this.tallas = d.sizes.filter((s) => s !== 'Única').map(String);
                 }

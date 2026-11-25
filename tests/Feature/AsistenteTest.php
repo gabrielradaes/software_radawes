@@ -177,7 +177,7 @@ class AsistenteTest extends TestCase
         $this->assertSame('Botín Chelsea (CH-210)', $r['table'][1][0][0]);
 
         $r = $this->decir($vend, '¿cuántos XY-999 hay?');
-        $this->assertStringContainsString('No encontré', $r['text']);
+        $this->assertStringContainsString('No hay ningún modelo con el código **XY-999**', $r['text']);
     }
 
     public function test_respeta_los_roles(): void
