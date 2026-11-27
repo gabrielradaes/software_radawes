@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Session } from '../core/session';
 import { errorText } from '../core/api';
+import { TextSize } from '../core/text-size';
 
 @Component({
   selector: 'page-login',
@@ -27,6 +28,7 @@ import { errorText } from '../core/api';
           <button class="primary big" [disabled]="busy() || !email || !password">{{ busy() ? 'Entrando…' : 'Entrar' }}</button>
         </form>
         <p class="hint">¿Olvidaste tu contraseña? Pídela en el panel web: «¿Olvidaste tu contraseña?».</p>
+        <button type="button" class="ghost" (click)="text.next()">🔠 Letra: {{ text.label }} (tocar para cambiar)</button>
         <p class="hint">💡 Para tenerla como app: en el menú del navegador toca <b>«Agregar a la pantalla de inicio»</b>.</p>
       </div>
     </div>
@@ -34,6 +36,7 @@ import { errorText } from '../core/api';
 })
 export class LoginPage {
   private session = inject(Session);
+  protected text = inject(TextSize);
   private router = inject(Router);
   email = '';
   password = '';

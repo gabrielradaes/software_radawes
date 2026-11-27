@@ -3,6 +3,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { SwUpdate } from '@angular/service-worker';
 import { filter } from 'rxjs';
 import { Session } from './core/session';
+import { TextSize } from './core/text-size';
 
 /** Marco de la app: barra de arriba (tienda) y pestañas abajo, como una app del celular. */
 @Component({
@@ -12,6 +13,7 @@ import { Session } from './core/session';
     @if (showChrome()) {
       <header class="topbar">
         <div class="brand"><span class="logo">RW</span><div><b>RadaWes</b><small>{{ session.user()?.first_name }} · {{ session.user()?.role }}</small></div></div>
+        <button class="aa" (click)="text.next(); flash()" [attr.aria-label]="'Tamaño de letra: ' + text.label">Aa</button>
         @if (!session.user()?.scoped && (session.me()?.branches?.length ?? 0) > 1) {
           <select class="branch" [value]="session.branchId()" (change)="session.chooseBranch(+$any($event.target).value)" aria-label="Tienda">
             @for (b of session.me()?.branches; track b.id) { <option [value]="b.id" [selected]="b.id === session.branchId()">{{ b.name }}</option> }
@@ -21,6 +23,7 @@ import { Session } from './core/session';
         }
       </header>
     }
+    @if (sizeNote()) { <p class="toast">🔠 Letra: {{ sizeNote() }}</p> }
     @if (updateReady()) {
       <button class="update" (click)="reload()">✨ Hay una versión nueva de la app. Toca para actualizar.</button>
     }
@@ -38,6 +41,8 @@ import { Session } from './core/session';
 })
 export class App {
   protected session = inject(Session);
+  protected text = inject(TextSize);   // se aplica apenas abre la app
+  protected sizeNote = signal('');
   private router = inject(Router);
   private url = signal('');
   protected updateReady = signal(false);
@@ -52,4 +57,10 @@ export class App {
   }
 
   reload() { location.reload(); }
+
+  flash() {
+    const l = this.text.label;
+    this.sizeNote.set(l);
+    setTimeout(() => { if (this.sizeNote() === l) this.sizeNote.set(''); }, 1500);
+  }
 }

@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { Api, errorText, isExpired } from '../core/api';
 import { Session } from '../core/session';
+import { TextSize } from '../core/text-size';
 
 /** Mi día: lo que vendí hoy y lo último que hice (mi registro de actividad). */
 @Component({
@@ -40,6 +41,14 @@ import { Session } from '../core/session';
         <p class="muted">Cargando…</p>
       }
 
+      <p class="section-title">🔠 Tamaño de la letra</p>
+      <div class="pay sizes-opt">
+        @for (o of text.options; track o.key) {
+          <button [class.on]="text.current() === o.key" (click)="text.set(o.key)" [style.font-size.%]="o.pct">{{ o.label }}</button>
+        }
+      </div>
+      <p class="muted small">También puedes tocar <b>Aa</b> arriba en cualquier pantalla.</p>
+
       <p class="section-title">Más</p>
       <div class="more">
         @if (session.can().publish) { <a class="secondary" [href]="session.me()?.links?.publish" target="_blank">📣 Publicar en la página (panel)</a> }
@@ -53,6 +62,7 @@ import { Session } from '../core/session';
 export class TodayPage {
   private api = inject(Api);
   protected session = inject(Session);
+  protected text = inject(TextSize);
   protected data = signal<any>(null);
   protected error = signal('');
 
