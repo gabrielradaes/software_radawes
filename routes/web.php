@@ -211,6 +211,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
 | Sitio público: raíz = elegir tienda; cada tienda bajo /{branch}
 |--------------------------------------------------------------------------
 */
+/*
+| App del celular (/app, Angular): API con la misma sesión y permisos del panel
+*/
+Route::prefix('api/app')->name('app.')->group(function () {
+    Route::get('me', [\App\Http\Controllers\MobileAppController::class, 'me'])->name('me');
+    Route::post('login', [\App\Http\Controllers\MobileAppController::class, 'login'])->middleware('throttle:10,1')->name('login');
+    Route::middleware('auth')->group(function () {
+        Route::post('logout', [\App\Http\Controllers\MobileAppController::class, 'logout'])->name('logout');
+        Route::post('ventas', [\App\Http\Controllers\MobileAppController::class, 'sell'])->middleware(['can:sales.create', 'throttle:60,1'])->name('ventas');
+        Route::get('hoy', [\App\Http\Controllers\MobileAppController::class, 'today'])->name('hoy');
+        Route::get('asistente', [\App\Http\Controllers\MobileAppController::class, 'assistant'])->name('asistente');
+    });
+});
+
 Route::get('/', LandingController::class)->name('landing');
 
 // Para Google: mapa del sitio

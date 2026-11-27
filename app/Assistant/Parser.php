@@ -250,6 +250,10 @@ class Parser
 
             return collect($nums[0])->map(fn ($n) => (string) (int) $n)->filter(fn ($n) => $n >= 15 && $n <= 50)->unique()->values()->all();
         }
+        // "¿hay el CH-210 en 40?", "número 41": tallas de calzado sin decir "talla"
+        if (preg_match_all('/\b(?:en|numero|nro|n)\s+(3[3-9]|4[0-8])\b(?!\s*(?:bs|bolivianos|pares|par|unidades|dias|%))/', $a, $m)) {
+            return array_values(array_unique($m[1]));
+        }
 
         return [];
     }

@@ -112,12 +112,23 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
 
       - name: Compilar estilos y scripts
         if: env.FTP_SERVER != ''
         run: |
           npm ci --no-audit --no-fund
           npm run build
+
+      - name: Compilar la app del celular (Angular → /app)
+        if: env.FTP_SERVER != ''
+        working-directory: mobile
+        run: |
+          npm ci --no-audit --no-fund
+          npx ng build --configuration production
+          test -f dist/mobile/browser/index.html
 
       - name: Armar carpetas rye/ y public_html/
         if: env.FTP_SERVER != ''
@@ -126,7 +137,7 @@ jobs:
           mkdir -p build/rye build/public_html
           tar --exclude=./.git --exclude=./.github --exclude=./node_modules --exclude=./build \
               --exclude=./tests --exclude=./public --exclude=./storage --exclude=./.env \
-              --exclude=./deploy --exclude=./scripts \
+              --exclude=./deploy --exclude=./scripts --exclude=./mobile \
               -cf - . | (cd build/rye && tar -xf -)
           # public_html: assets + index.php y .htaccess de producción (nunca uploads/)
           cp -r public/css public/js public/favicon.ico public/robots.txt build/public_html/
@@ -135,6 +146,10 @@ jobs:
           cp -r public/images/brands build/public_html/images/
           cp deploy/index.php build/public_html/index.php
           cp deploy/htaccess build/public_html/.htaccess
+          # App del celular
+          mkdir -p build/public_html/app
+          cp -r mobile/dist/mobile/browser/. build/public_html/app/
+          cp deploy/app-htaccess build/public_html/app/.htaccess
           echo "rye: $(find build/rye -type f | wc -l) archivos · public_html: $(find build/public_html -type f | wc -l) archivos"
 
       - name: Instalar lftp
@@ -201,7 +216,17 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "
-            mirror -R --no-perms --verbose=1 --exclude-glob uploads/ build/public_html/ public_html/;
+            mirror -R --no-perms --verbose=1 --exclude-glob uploads/ --exclude-glob app/ build/public_html/ public_html/;
+            bye"
+
+      - name: Subir la app del celular (public_html/app, quita versiones viejas)
+        if: env.FTP_SERVER != ''
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "
+            mirror -R --no-perms --delete --verbose=1 build/public_html/app/ public_html/app/;
             bye"
 
       - name: Aplicar migraciones y limpiar cachés
@@ -224,7 +249,7 @@ jobs:
         run: |
           URL="${SITE_URL:-https://radawescalzadosbrasileros.com}"
           FAIL=0
-          for P in / /sitemap.xml /catalogo.xml /admin/login /js/editor/photo-editor.js /js/editor/video-editor.js /js/editor/media-uploader.js; do
+          for P in / /sitemap.xml /catalogo.xml /admin/login /js/editor/photo-editor.js /js/editor/video-editor.js /js/editor/media-uploader.js /app/ /app/manifest.webmanifest /app/ngsw-worker.js /api/app/me; do
             CODE=$(curl -s -o /dev/null -w '%{http_code}' "$URL$P")
             echo "$P → $CODE"
             if [ "$CODE" != "200" ]; then echo "::error::$P respondió $CODE"; FAIL=1; fi

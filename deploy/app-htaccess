@@ -1,0 +1,21 @@
+# App del celular (Angular) en /app: archivos tal cual; lo demás abre la app.
+DirectoryIndex index.html
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /app/
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+# La página, la lista de archivos y el service worker siempre frescos (así llegan las actualizaciones)
+<FilesMatch "^(index\.html|ngsw\.json|ngsw-worker\.js|safety-worker\.js|manifest\.webmanifest)$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, must-revalidate"
+    </IfModule>
+    <IfModule mod_expires.c>
+        ExpiresActive Off
+    </IfModule>
+</FilesMatch>
+AddType application/manifest+json .webmanifest

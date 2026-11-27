@@ -20,6 +20,9 @@ class ActivityLabels
         // Sesión
         'admin/login' => 'Inició sesión en el panel',
         'admin.logout' => 'Cerró sesión',
+        'app.login' => 'Inició sesión en la app del celular',
+        'app.logout' => 'Cerró sesión en la app',
+        'app.ventas' => 'Vendió desde la app',
         'admin/recuperar' => 'Pidió un código para recuperar su contraseña',
         'admin/recuperar/codigo' => 'Cambió su contraseña con el código',
         // Ventas y caja
@@ -35,6 +38,7 @@ class ActivityLabels
         // Stock
         'admin.stock.move' => 'Movió stock',
         'admin.stock.ingresar.store' => 'Ingresó calzado al stock',
+        'admin.asistente.aprender' => 'Le enseñó al asistente qué quería hacer',
         'admin.asistente.ensenar.palabra' => 'Le enseñó una palabra al asistente',
         'admin.asistente.ensenar.frase' => 'Le enseñó una frase al asistente',
         'admin.asistente.ensenar.palabra.quitar' => 'Quitó una palabra del asistente',

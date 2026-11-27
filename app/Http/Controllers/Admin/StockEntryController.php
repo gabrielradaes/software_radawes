@@ -59,6 +59,7 @@ class StockEntryController extends Controller
         $user = $request->user();
         $scoped = $user->scopedBranchId();
         $isNew = ! $request->filled('product_id');
+        abort_if($isNew && $user->cannot('products.manage'), 403, 'Tu usuario no puede crear modelos nuevos: pídeselo al supervisor.');
         if ($isNew && $request->filled('code')) {
             $request->merge(['code' => Parser::normalizeCode($request->input('code'))]);
         }
